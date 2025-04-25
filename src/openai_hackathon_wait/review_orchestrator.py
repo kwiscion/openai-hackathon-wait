@@ -124,36 +124,38 @@ class ReviewOrchestrator:
             review=main_review,
         )
 
-    async def main(self, paper_path: str, num_reviews: int):
-        """
-        Main method to run the review orchestrator.
 
-        Args:
-            paper_path: Path to the paper file
-            num_reviews: Number of reviews to get
-        """
-        # Read the paper
-        with open(paper_path, "r", encoding="utf-8") as f:
-            paper = f.read()
+async def main(paper_path: str, num_reviews: int):
+    """
+    Main method to run the review orchestrator.
 
-        # Run the review
-        review_jobs = []
-        for _ in range(num_reviews):
-            review_jobs.append(self.review_paper(paper))
+    Args:
+        paper_path: Path to the paper file
+        num_reviews: Number of reviews to get
+    """
+    # Read the paper
+    with open(paper_path, "r", encoding="utf-8") as f:
+        paper = f.read()
 
-        reviews = await asyncio.gather(*review_jobs)
+    # Run the review
+    review_jobs = []
+    for _ in range(num_reviews):
+        orchestrator = ReviewOrchestrator()
+        review_jobs.append(orchestrator.review_paper(paper))
 
-        # Save the results
-        output_path = paper_path.replace(".md", "_reviews.json")
-        with open(output_path, "w", encoding="utf-8") as f:
-            import json
+    reviews = await asyncio.gather(*review_jobs)
 
-            reviews_dict = [review.model_dump() for review in reviews]
+    # Save the results
+    output_path = paper_path.replace(".md", "_reviews.json")
+    with open(output_path, "w", encoding="utf-8") as f:
+        import json
 
-            json.dump(reviews_dict, f, indent=4)
+        reviews_dict = [review.model_dump() for review in reviews]
 
-        logger.info(f"Reviews saved to {output_path}")
-        return reviews
+        json.dump(reviews_dict, f, indent=4)
+
+    logger.info(f"Reviews saved to {output_path}")
+    return reviews
 
 
 if __name__ == "__main__":
@@ -163,9 +165,12 @@ if __name__ == "__main__":
 
     dotenv.load_dotenv()
 
-    if len(sys.argv) < 2:
-        print("Usage: python -m openai_hackathon_wait.review_orchestrator <paper_path>")
+    if len(sys.argv) < 3:
+        print(
+            "Usage: python -m openai_hackathon_wait.review_orchestrator <paper_path> <num_reviews>"
+        )
         sys.exit(1)
 
     paper_path = sys.argv[1]
-    asyncio.run(ReviewOrchestrator().main(paper_path, 3))
+    num_reviews = int(sys.argv[2])
+    asyncio.run(main(paper_path, num_reviews))

@@ -1,0 +1,14 @@
+{
+    "decision": "major revisions",
+    "rationale": "The manuscript's innovative design and significant contributions to understanding the effects of psilocybin and salvinorin-A on functional connectivity are commendable. However, issues regarding methodological transparency, sample size, and ethical considerations need to be addressed before publication.",
+    "key_strengths": "1. Innovative within-subject design reduces variability and increases reliability. \n2. Comprehensive fMRI analysis contributes meaningfully to psychopharmacological theory.\n3. Clear visual representation of results enhances understanding.",
+    "key_weaknesses": "1. Small sample size (three macaques) limits generalizability.\n2. Methodological transparency in data preprocessing and statistical techniques is inadequate for reproducibility.\n3. Confounding factors like dosing variations and anesthesia effects require better explanation.\n4. Interpretation of results needs stronger connections to existing literature.\n5. Ethical aspects regarding animal welfare are insufficiently detailed.",
+    "specific_revisions": "1. Provide a more transparent and detailed account of data preprocessing and statistical methods.\n2. Address confounding factors, particularly concerning dosing variations and anesthesia effects.\n3. Enhance the discussion by integrating more connections to existing studies and theoretical frameworks.\n4. Expand on ethical protocols and animal welfare considerations.",
+    "priority_issues": [
+        "Methodological transparency",
+        "Ethical considerations regarding animal welfare",
+        "Sample size limitations",
+        "Confounding factors"
+    ],
+    "ethical_considerations": "The manuscript lacks detailed explanations of the ethical protocols for animal welfare, particularly the long-term effects of the research on the macaques."
+}

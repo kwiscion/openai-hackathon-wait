@@ -5,6 +5,7 @@ from agents import Runner
 from loguru import logger
 from pydantic import BaseModel
 
+from .agents.review_planner import review_planner_agent
 from .agents.reviewer import Review, reviewer_agent
 from .agents.reviewer_assistant import reviewer_assistant_agent
 
@@ -15,17 +16,20 @@ class FullReview(BaseModel):
 
 
 ANALYSIS_AREAS = [
-    "novelty",
-    "ethical concerns",
-    "methodology",
+    "Novelty",
+    "Ethical Concerns",
+    "Methodology",
 ]
 
 
 class ReviewOrchestrator:
     def __init__(self):
-        pass
+        self.reviewer_agent = reviewer_agent
+        self.reviewer_assistant_agent = reviewer_assistant_agent
 
-    async def get_assistant_reviews(self, paper: str) -> List[Dict[str, Any]]:
+    async def get_assistant_reviews(
+        self, paper: str, analysis_areas: List[str]
+    ) -> List[Dict[str, Any]]:
         """
         Get reviews from multiple assistant agents in parallel.
         """
@@ -33,10 +37,10 @@ class ReviewOrchestrator:
 
         # Create tasks for parallel execution
         tasks = []
-        for analysis_area in ANALYSIS_AREAS:
+        for analysis_area in analysis_areas:
             logger.info(f"Creating task for reviewing {analysis_area}...")
             prompt = f"Please review the following paper and provide a feedback on the {analysis_area}.\n\nPaper:\n\n{paper}"
-            tasks.append(Runner.run(reviewer_assistant_agent, prompt))
+            tasks.append(Runner.run(self.reviewer_assistant_agent, prompt))
 
         # Run all tasks in parallel
         logger.info("Running all assistant review tasks in parallel...")
@@ -44,7 +48,7 @@ class ReviewOrchestrator:
 
         # Process the results
         results = []
-        for analysis_area, review in zip(ANALYSIS_AREAS, reviews):
+        for analysis_area, review in zip(analysis_areas, reviews):
             logger.info(f"Processing review for {analysis_area}...")
             results.append({"area": analysis_area, "review": review.final_output})
 
@@ -80,15 +84,36 @@ class ReviewOrchestrator:
         """
 
         # Get the main review
-        main_review = await Runner.run(reviewer_agent, prompt)
+        main_review = await Runner.run(self.reviewer_agent, prompt)
         return main_review.final_output
+
+    async def get_analysis_areas(self, paper: str) -> List[str]:
+        """
+        Get the analysis areas for the paper.
+        """
+        prompt = f"""
+        Please review the following paper and provide a list of areas to review.
+        Exclude areas that will be included by default:
+        {", ".join(ANALYSIS_AREAS)}
+        
+        Paper:
+        
+        {paper}
+        """
+        result = await Runner.run(review_planner_agent, prompt)
+        areas = result.final_output.areas
+        return areas + ANALYSIS_AREAS
 
     async def review_paper(self, paper: str) -> FullReview:
         """
         Review a paper using multiple agents in parallel and then get a main review.
         """
+        # Get the analysis areas
+        analysis_areas = await self.get_analysis_areas(paper)
+        logger.info(f"Analysis areas: {analysis_areas}")
+
         # Get reviews from assistant agents
-        assistant_reviews = await self.get_assistant_reviews(paper)
+        assistant_reviews = await self.get_assistant_reviews(paper, analysis_areas)
 
         # Get the main review
         main_review = await self.get_main_review(paper, assistant_reviews)

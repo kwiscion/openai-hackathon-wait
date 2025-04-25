@@ -13,6 +13,7 @@ dependencies = [
     "arxiv>=2.2.0",
     "ipykernel>=6.29.5",
     "pydantic>=2.11.3",
+    "loguru>=0.7.3",
 ]
 
 [project.scripts]

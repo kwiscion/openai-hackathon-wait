@@ -12,7 +12,7 @@ PROMPT = (
     "- Overall rating (very good, good, fair, poor, very poor)"
     "- How confident you are in the rating (confident, unsure, not confident)"
     "- How much time you spent reviewing the paper"
-    "- If there are any ethical concerns"
+    "- If there are any ethical concerns, please describe them."
 )
 
 
@@ -41,8 +41,8 @@ class Review(BaseModel):
 
     confidence: Confidence = Field(description="How confident you are in the rating.")
 
-    ethical_concerns_flag: bool = Field(
-        description="If there are any ethical concerns."
+    ethical_concerns: str | None = Field(
+        description="If there are any ethical concerns, please describe them."
     )
 
 

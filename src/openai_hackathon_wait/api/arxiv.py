@@ -1,10 +1,10 @@
 """Util that calls Arxiv."""
+
 import logging
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, model_validator
 from agents import function_tool
-
+from pydantic import BaseModel, model_validator
 
 logger = logging.getLogger(__name__)
 
@@ -46,8 +46,8 @@ class ArxivAPIWrapper(BaseModel):
             arxiv.run("tree of thought llm)
     """
 
-    arxiv_search: Any = None #: :meta private:
-    arxiv_exceptions: Any = "not_found" #: :meta private:
+    arxiv_search: Any = None  #: :meta private:
+    arxiv_exceptions: Any = "not_found"  #: :meta private:
     top_k_results: int = 10
     ARXIV_MAX_QUERY_LENGTH: int = 300
     load_max_docs: int = 100
@@ -60,6 +60,7 @@ class ArxivAPIWrapper(BaseModel):
     def validate_environment(self) -> "ArxivAPIWrapper":
         try:
             import arxiv
+
             self.arxiv_search = arxiv.Search
             self.arxiv_exceptions = (
                 arxiv.ArxivError,
@@ -142,7 +143,7 @@ class ArxivAPIWrapper(BaseModel):
                 }
             else:
                 extra_metadata = {}
-                
+
             paper = {
                 "published": str(result.updated.date()),
                 "title": result.title,
@@ -152,7 +153,7 @@ class ArxivAPIWrapper(BaseModel):
                 **extra_metadata,
             }
             papers.append(paper)
-            
+
         return papers
 
 
@@ -179,10 +180,7 @@ def arxiv_tool(query: str) -> Dict[str, Any]:
     result = arxiv_wrapper.run(query)
 
     if "No good Arxiv Result was found" in result or "Arxiv exception" in result:
-        return {
-            "error": f"No good arXiv results found for '{query}'.",
-            "papers": []
-        }
+        return {"error": f"No good arXiv results found for '{query}'.", "papers": []}
 
     # Parse the string format from run() into a structured format
     papers = []
@@ -202,6 +200,4 @@ def arxiv_tool(query: str) -> Dict[str, Any]:
         # detailed_papers = arxiv_wrapper.load(query)
         # return {"papers": detailed_papers}
 
-    return {
-        "papers": papers
-    }
+    return {"papers": papers}

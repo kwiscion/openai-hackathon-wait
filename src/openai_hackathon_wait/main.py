@@ -5,6 +5,8 @@ import sys
 import dotenv
 from loguru import logger
 
+from openai_hackathon_wait.agents.structure_validator import run_validator
+
 from .publication_decision import PublicationDecisionOrchestrator
 from .review_orchestrator import ReviewOrchestrator
 from .review_synthesizer import ReviewSynthesizer
@@ -23,6 +25,22 @@ async def main(paper_path: str, num_reviews: int):
     # Read the paper
     with open(paper_path, "r", encoding="utf-8") as f:
         paper = f.read()
+
+    logger.info(f"Paper: {paper[:50]}...")
+
+    # Run the structure validator
+    structure_validator_result = await run_validator(
+        paper_content=paper, auto_detect=True, grammar_check=True
+    )
+
+    # Save the structure validator result
+    structure_validator_path = paper_path.replace(".md", "_structure_validator.json")
+    with open(structure_validator_path, "w", encoding="utf-8") as f:
+        json.dump(structure_validator_result, f, indent=4)
+
+    logger.info(
+        f"Structure validator result saved to {paper_path.replace('.md', '_structure_validator.json')}"
+    )
 
     # Run the review
     review_jobs = []
@@ -55,7 +73,9 @@ async def main(paper_path: str, num_reviews: int):
 
     # Make the decision
     decision_orchestrator = PublicationDecisionOrchestrator(
-        synthesis_output_path, paper_path
+        synthesis_output_path,
+        paper_path,
+        technical_analysis_path=structure_validator_path,
     )
 
     decision = await decision_orchestrator.make_decision()

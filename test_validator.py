@@ -35,7 +35,7 @@ Neural networks demonstrate significant potential for enhancing medical imaging 
 
     print("Testing structure validator with direct markdown input...")
     result = await run_validator(
-        paper_content=test_markdown, auto_detect=True, grammar_check=True, min_score=5
+        paper_content=test_markdown, auto_detect=True, grammar_check=True
     )
 
     print("\nValidator Output:")

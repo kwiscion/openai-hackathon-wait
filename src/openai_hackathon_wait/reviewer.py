@@ -1,5 +1,7 @@
+from enum import Enum
+
 from agents import Agent
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 PROMPT = (
     "You are a scientific reviewer. You are given a paper."
@@ -13,35 +15,35 @@ PROMPT = (
     "- If there are any ethical concerns"
 )
 
-# class Rating(str, Enum):
-#     VERY_GOOD = "very good"
-#     GOOD = "good"
-#     FAIR = "fair"
-#     POOR = "poor"
-#     VERY_POOR = "very poor"
+
+class Rating(str, Enum):
+    VERY_GOOD = "very good"
+    GOOD = "good"
+    FAIR = "fair"
+    POOR = "poor"
+    VERY_POOR = "very poor"
+
+
+class Confidence(str, Enum):
+    CONFIDENT = "confident"
+    UNCERTAIN = "uncertain"
+    NOT_CONFIDENT = "not confident"
 
 
 class Review(BaseModel):
-    strengths: str
-    "The strengths of the paper."
+    strengths: str = Field(description="The strengths of the paper.")
 
-    weaknesses: str
-    "The weaknesses of the paper."
+    weaknesses: str = Field(description="The weaknesses of the paper.")
 
-    comments: str
-    "Comments on the paper."
+    comments: str = Field(description="Comments on the paper.")
 
-    rating: str
-    "The rating of the paper."
+    rating: Rating = Field(description="The rating of the paper.")
 
-    confidence: str
-    "How confident you are in the rating."
+    confidence: Confidence = Field(description="How confident you are in the rating.")
 
-    time_spent: str
-    "How much time you spent reviewing the paper."
-
-    ethical_concerns_flag: bool
-    "If there are any ethical concerns."
+    ethical_concerns_flag: bool = Field(
+        description="If there are any ethical concerns."
+    )
 
 
 reviewer_agent = Agent(

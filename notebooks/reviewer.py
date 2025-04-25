@@ -1,4 +1,5 @@
 import asyncio
+import sys
 
 from agents import Runner, trace
 from dotenv import load_dotenv
@@ -12,7 +13,7 @@ client = OpenAI()
 
 
 async def main():
-    path = "../data/Bagdasarian et al (2024) Acute Effects of Hallucinogens on FC/Bagdasarian et al (2024) Acute Effects of Hallucinogens on FC.md"
+    path = sys.argv[1]
     with open(path, "r", encoding="utf-8") as f:
         text = f.read()
     with trace("reviewer_agent"):

@@ -54,6 +54,7 @@ async def arxiv_search(
         }
     
     max_results = 25 if max_results is None else max_results
+    max_results = 1
     sort_by = "relevance" if sort_by is None else sort_by
     
     max_results = min(max(1, max_results), 30)
@@ -91,7 +92,7 @@ async def arxiv_search(
         # fetch the pdfs and get the content
         papers_content = await asyncio.gather(*[arxiv_api.fetch_pdf_and_get_article_content(paper_url) for paper_url in papers_urls])
         
-        return papers_urls
+        return papers_content
         
     except Exception as e:
         logger.error(f"Error in arXiv search: {str(e)}")

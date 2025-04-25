@@ -11,8 +11,8 @@ from datetime import datetime
 
 import aiohttp
 from pydantic import BaseModel, Field
-import pdfplumber
 
+from openai_hackathon_wait.utils.get_text_from_pdf import get_text_from_pdf_with_pymupdf
 
 logger = logging.getLogger(__name__)
 
@@ -202,11 +202,8 @@ class ArxivAPI(BaseModel):
                 logger.info(f"PDF downloaded to temporary file {output_path}")
                 
                 # Extract text from PDF
-                text_content = ""
-                with pdfplumber.open(output_path) as pdf:
-                    for page in pdf.pages:
-                        text_content += page.extract_text() or ""
-                        text_content += "\n\n"  # Add spacing between pages
+                text_content = await get_text_from_pdf_with_pymupdf(pdf_path=output_path)
+                
                 
                 logger.info(f"Successfully extracted text from PDF ({len(text_content)} characters)")
                 return text_content

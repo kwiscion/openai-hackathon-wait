@@ -6,7 +6,7 @@ from agents import Runner, trace
 from dotenv import load_dotenv
 from openai import OpenAI
 
-from openai_hackathon_wait.reviewer import reviewer_agent
+from openai_hackathon_wait.agents.reviewer import reviewer_agent
 
 load_dotenv()
 

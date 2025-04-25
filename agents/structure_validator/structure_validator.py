@@ -21,7 +21,6 @@ class PaperAnalysisResult(BaseModel):
     focus_areas: List[str]
     recommended_sections: List[str]
     main_topics: List[str]
-    estimated_complexity: int  # 1-10 scale
 
 @dataclass
 class PaperValidatorContext:
@@ -29,7 +28,7 @@ class PaperValidatorContext:
     paper_path: str = PAPER_PATH
     paper_content: Optional[str] = None  # Direct markdown content
     expected_sections: list[str] = None
-    min_score_to_proceed: int = 5
+    min_quality_level: str = "Average"  # Options: "Very Bad", "Bad", "Average", "Good", "Very Good", "Excellent"
     grammar_check_enabled: bool = True
     paper_type: str = "research"  # Options: "research", "review", "case_study", "thesis"
     focus_areas: Optional[list[str]] = None  # e.g. ["methodology", "results", "discussion"]
@@ -132,7 +131,7 @@ def analyze_paper_properties(wrapper: RunContextWrapper[PaperValidatorContext]) 
             },
             {
                 "role": "user",
-                "content": f"Analyze this academic paper and determine: 1) The paper type (research, review, case_study, thesis, or other), 2) The main focus areas or key sections that should receive special attention, 3) The recommended sections for this type of paper, 4) The main topics or themes covered, 5) The estimated complexity on a scale of 1-10. Format your response as structured JSON.\n\nPaper content:\n{paper_content}"
+                "content": f"Analyze this academic paper and determine: 1) The paper type (research, review, case_study, thesis, or other), 2) The main focus areas or key sections that should receive special attention, 3) The recommended sections for this type of paper, 4) The main topics or themes covered. Format your response as structured JSON.\n\nPaper content:\n{paper_content}"
             }
         ],
         temperature=0.0,
@@ -157,7 +156,7 @@ def analyze_paper_properties(wrapper: RunContextWrapper[PaperValidatorContext]) 
         # If parsing fails, return the error but don't block the process
         return f"Paper analysis completed but error parsing results: {str(e)}. Continuing with default settings.\n\nRaw analysis: {analysis_json}"
     
-    return f"Paper successfully analyzed as '{result.paper_type}' with focus areas: {', '.join(result.focus_areas)}. Complexity level: {result.estimated_complexity}/10."
+    return f"Paper successfully analyzed as '{result.paper_type}' with focus areas: {', '.join(result.focus_areas)}."
 
 def dynamic_instructions(wrapper: RunContextWrapper[PaperValidatorContext], agent: Agent[PaperValidatorContext]) -> str:
     """
@@ -180,30 +179,22 @@ def dynamic_instructions(wrapper: RunContextWrapper[PaperValidatorContext], agen
     
     focus_instructions = ""
     if ctx.focus_areas:
-        focus_instructions = f" Pay special attention to the following areas: {', '.join(ctx.focus_areas)}."
-    
-    complexity_note = ""
-    if ctx.paper_analysis and hasattr(ctx.paper_analysis, 'estimated_complexity'):
-        complexity = ctx.paper_analysis.estimated_complexity
-        if complexity > 7:
-            complexity_note = f" This is a complex paper (rated {complexity}/10), so be thorough in your analysis."
-        elif complexity < 4:
-            complexity_note = f" This is a relatively simple paper (rated {complexity}/10), so focus on core elements."
+        focus_instructions = f" Consider the following areas in your supportive assessment: {', '.join(ctx.focus_areas)}."
     
     auto_detect_instruction = ""
     if ctx.auto_detect_paper_properties:
         auto_detect_instruction = " First analyze the paper properties to determine its type and focus areas."
     
-    return f"""You are a structure validator for a {paper_type_desc}.{auto_detect_instruction}
+    return f"""You are a supportive structure validator for a {paper_type_desc}.{auto_detect_instruction}
 
-Your task is to analyze the paper's structure and check if it contains all expected sections: {', '.join(ctx.expected_sections)}.
+Your task is to analyze the paper's structure and check how it aligns with common academic expectations. While the following sections are typically expected: {', '.join(ctx.expected_sections)}, recognize that high-quality academic work can sometimes use creative or alternative structures.
 
-{focus_instructions}{complexity_note}
+{focus_instructions}
 
-The minimum quality score to proceed to in-depth review is {ctx.min_score_to_proceed}/10.
+The minimum quality level to proceed to in-depth review is {ctx.min_quality_level}, but focus on potential and value rather than rigid adherence to conventions.
 
-Provide only concise summaries and specific recommendations without detailed analysis. 
-Use the generate_final_summary tool to create a concise final report combining both analyses and include a clear decision about whether the paper should proceed to in-depth review by another agent.
+Provide balanced, constructive summaries with helpful recommendations. 
+Use the generate_final_summary tool to create a final report that highlights strengths while noting areas for improvement, and includes a thoughtful decision about whether the paper should proceed to in-depth review.
 """
 
 @function_tool
@@ -231,14 +222,14 @@ def validate_structure(wrapper: RunContextWrapper[PaperValidatorContext]) -> str
         messages=[
             {
                 "role": "system",
-                "content": f"You are a scientific paper structure validator for a {paper_type} paper. Analyze the given paper and identify which of the expected sections are present and which are missing. Provide only a brief summary and specific improvement recommendations without detailed analysis."
+                "content": f"You are a scientific paper structure validator for a {paper_type} paper. Analyze the given paper and identify which of the expected sections are present and which are missing. Be supportive and constructive in your assessment. Recognize that not all academic papers strictly follow traditional section structures, especially if they are innovative or interdisciplinary. Provide only a brief summary and helpful improvement recommendations."
             },
             {
                 "role": "user",
-                "content": f"Analyze the structure of this scientific paper and identify which of these expected sections are present: {', '.join(expected_sections)}. Then provide ONLY: 1) A brief summary of present/missing sections, 2) Specific improvement recommendations. Be concise.\n\nIMPORTANT: DO NOT include any summary of the paper's content, subject matter, or findings. Focus EXCLUSIVELY on structural elements like section headers and organizational aspects.\n\nPaper content:\n{paper_content}"
+                "content": f"Analyze the structure of this scientific paper and identify which of these expected sections are present: {', '.join(expected_sections)}. Then provide ONLY: 1) A brief summary of present/missing sections with a focus on strengths, 2) Constructive improvement recommendations. Be concise and supportive.\n\nIMPORTANT: DO NOT include any summary of the paper's content, subject matter, or findings. Focus EXCLUSIVELY on structural elements like section headers and organizational aspects.\n\nPaper content:\n{paper_content}"
             }
         ],
-        temperature=0.0,
+        temperature=0.3,
         max_tokens=500
     )
     
@@ -272,14 +263,14 @@ def check_grammar_punctuation(wrapper: RunContextWrapper[PaperValidatorContext])
         messages=[
             {
                 "role": "system",
-                "content": "You are a scientific writing expert focused on grammar and punctuation. Your task is to analyze the provided scientific paper and provide only a concise summary of grammar and punctuation issues and specific improvement recommendations."
+                "content": "You are a scientific writing expert focused on grammar and punctuation. Your task is to analyze the provided scientific paper and provide a balanced assessment of writing quality. Focus on highlighting strengths while gently noting areas for improvement. Be supportive and constructive rather than overly critical."
             },
             {
                 "role": "user",
-                "content": f"Review this scientific paper for grammar and punctuation issues. Provide ONLY: 1) A concise summary of overall writing quality, 2) 3-5 specific improvement recommendations with brief examples. Do not provide a detailed section-by-section analysis.\n\nIMPORTANT: DO NOT include any summary of the paper's content, subject matter, or findings. Focus EXCLUSIVELY on writing quality, grammar, syntax, and punctuation.\n\nPaper content:\n{paper_content}"
+                "content": f"Review this scientific paper for grammar and punctuation aspects. Provide ONLY: 1) A concise summary of overall writing quality with emphasis on strengths, 2) 3-5 supportive improvement suggestions. Do not provide a detailed section-by-section analysis.\n\nIMPORTANT: DO NOT include any summary of the paper's content, subject matter, or findings. Focus EXCLUSIVELY on writing quality, grammar, syntax, and punctuation.\n\nPaper content:\n{paper_content}"
             }
         ],
-        temperature=0.0,
+        temperature=0.3,
         max_tokens=500
     )
     
@@ -299,14 +290,13 @@ def generate_final_summary(wrapper: RunContextWrapper[PaperValidatorContext], st
     Returns:
         str: A concise final summary with improvement recommendations and review decision.
     """
-    min_score = wrapper.context.min_score_to_proceed
+    min_quality_level = wrapper.context.min_quality_level
     paper_type = wrapper.context.paper_type
     
     # Add paper analysis information if available
     paper_info = ""
     if wrapper.context.paper_analysis:
-        analysis = wrapper.context.paper_analysis
-        paper_info = f"This is a {paper_type} paper with an estimated complexity of {analysis.estimated_complexity}/10."
+        paper_info = f"This is a {paper_type} paper."
     
     # Use OpenAI to create a concise combined summary
     response = client.chat.completions.create(
@@ -314,14 +304,14 @@ def generate_final_summary(wrapper: RunContextWrapper[PaperValidatorContext], st
         messages=[
             {
                 "role": "system",
-                "content": f"You are a scientific paper reviewer evaluating a {paper_type} paper. {paper_info} Provide concise and actionable feedback. Create a very brief evaluation focused ONLY on structure and grammar issues - DO NOT summarize the paper's content or topic. Make a clear decision about whether the paper should proceed to in-depth review. When evaluating, give higher weight to scientific content and essential structure than to minor formatting or grammar issues."
+                "content": f"You are a scientific paper reviewer evaluating a {paper_type} paper. {paper_info} Provide constructive and supportive feedback. Create a very brief evaluation focused on structure and grammar issues - DO NOT summarize the paper's content or topic. Make a decision about whether the paper should proceed to in-depth review with a positive, encouraging approach. The minimum quality level needed to proceed is '{min_quality_level}', but be generous in your assessment, focusing on potential rather than strict adherence to formal standards. You MUST grade the paper using ONLY one of these labels: 'Very Bad', 'Bad', 'Average', 'Good', 'Very Good', or 'Excellent'. When evaluating, prioritize the scientific value and core content over rigid structural requirements or minor formatting/grammar issues."
             },
             {
                 "role": "user",
-                "content": f"Create a concise final validation report that combines these analyses. DO NOT include a description of what the paper is about or summarize its content - focus ONLY on structure and grammar evaluation.\n\nInclude:\n1) 'Structure Assessment' section with brief evaluation of structural elements only (not paper content)\n2) 'Writing Quality' section with brief evaluation of grammar and writing\n3) 'Key Recommendations' section with 3-5 actionable structure/grammar improvements\n4) 'Review Decision' section with a clear YES or NO decision on whether the paper should proceed to in-depth review\n\nThe decision should be based on whether the quality meets the minimum standard of {min_score}/10. Note that scientific content and essential structure should count more toward the evaluation than minor grammar or formatting issues.\n\nIMPORTANT: DO NOT include phrases like 'The paper provides...' or 'This study explores...' or ANY description of the paper's content, subject matter, or findings. Focus EXCLUSIVELY on structural elements and writing quality.\n\nStructure Analysis:\n{structure_analysis}\n\nGrammar Analysis:\n{grammar_analysis}"
+                "content": f"Create a concise final validation report that combines these analyses. DO NOT include a description of what the paper is about or summarize its content - focus on structure and grammar evaluation.\n\nYou MUST include ALL of these sections in your report:\n1) 'Structure Assessment' section with brief evaluation of structural elements only (not paper content)\n2) 'Writing Quality' section with brief evaluation of grammar and writing\n3) 'Key Recommendations' section with 3-5 actionable structure/grammar improvements\n4) 'Quality Assessment' section that MUST contain ONLY one of these labels: 'Very Bad', 'Bad', 'Average', 'Good', 'Very Good', or 'Excellent', optionally followed by a single brief sentence explanation\n5) 'Review Decision' section with a clear YES or NO decision on whether the paper should proceed to in-depth review\n\nThe decision should be based on whether the assessed quality level meets the minimum standard of {min_quality_level}. Be lenient in your assessment - a paper with some structural issues can still proceed if it has sufficient scientific merit. Consider the overall value of the paper rather than focusing too much on minor issues.\n\nIMPORTANT: DO NOT include phrases like 'The paper provides...' or 'This study explores...' or ANY description of the paper's content, subject matter, or findings. Focus EXCLUSIVELY on structural elements and writing quality.\n\nStructure Analysis:\n{structure_analysis}\n\nGrammar Analysis:\n{grammar_analysis}"
             }
         ],
-        temperature=0.0,
+        temperature=0.3,  # Slightly increased temperature for less rigid responses
         max_tokens=500
     )
     
@@ -336,14 +326,14 @@ structure_validator_agent = Agent[PaperValidatorContext](
     tools=[analyze_paper_properties, validate_structure, check_grammar_punctuation, generate_final_summary],
 )
 
-async def run_validator(paper_content=None, paper_path=PAPER_PATH, paper_type=None, min_score=5, focus_areas=None, grammar_check=True, auto_detect=True):
+async def run_validator(paper_content=None, paper_path=PAPER_PATH, paper_type=None, min_quality_level="Average", focus_areas=None, grammar_check=True, auto_detect=True):
     """Run the structure validator on a paper.
     
     Args:
         paper_content (str, optional): The markdown content of the paper to validate
         paper_path (str, optional): Path to the paper to validate (used only if paper_content is not provided)
         paper_type (str, optional): Type of paper - "research", "review", "case_study", or "thesis". If None and auto_detect=True, will be detected automatically.
-        min_score (int): Minimum score needed to proceed to review (1-10)
+        min_quality_level (str): Minimum quality level needed to proceed to review (Options: "Very Bad", "Bad", "Average", "Good", "Very Good", "Excellent")
         focus_areas (list, optional): Specific areas to focus on during validation. If None and auto_detect=True, will be detected automatically.
         grammar_check (bool): Whether to check grammar
         auto_detect (bool): Whether to automatically detect paper properties
@@ -356,7 +346,7 @@ async def run_validator(paper_content=None, paper_path=PAPER_PATH, paper_type=No
         paper_content=paper_content,
         paper_path=paper_path if paper_content is None else None,
         paper_type=paper_type if paper_type else "research",  # Will be overridden if auto_detect is True
-        min_score_to_proceed=min_score,
+        min_quality_level=min_quality_level,
         focus_areas=focus_areas,
         grammar_check_enabled=grammar_check,
         auto_detect_paper_properties=auto_detect
@@ -373,16 +363,31 @@ async def run_validator(paper_content=None, paper_path=PAPER_PATH, paper_type=No
 async def main():
     """Main function for running as a standalone script."""
     
+    markdown_path = "data/Bagdasarian et al (2024) Acute Effects of Hallucinogens on FC/Bagdasarian et al (2024) Acute Effects of Hallucinogens on FC.md"
     # Example using direct markdown content
-    sample_markdown = """ """
+    sample_markdown = """# Sample Paper
     
-    output2 = await run_validator(
-        paper_content=sample_markdown,
+## Abstract
+This is a sample abstract.
+
+## Introduction
+This is a sample introduction.
+
+## Methodology
+This is a sample methodology section.
+
+## Conclusion
+This is a sample conclusion.
+"""
+    
+    # Test with "Average" quality level
+    output1 = await run_validator(
+        paper_path=markdown_path,
         auto_detect=True,
-        min_score=5
+        min_quality_level="Average"
     )
-    print("\nResult from direct markdown input:")
-    print(output2)
+    print("\nResult with 'Average' quality level requirement:")
+    print(output1)
     
 
 if __name__ == "__main__":

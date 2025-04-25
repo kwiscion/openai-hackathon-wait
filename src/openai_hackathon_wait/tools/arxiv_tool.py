@@ -1,5 +1,4 @@
-from typing import Any, Dict, List, Optional, Union, TypedDict
-import os
+from typing import Any, Optional, TypedDict
 import asyncio
 from agents import function_tool, RunContextWrapper
 from loguru import logger
@@ -35,7 +34,7 @@ async def arxiv_search(
     This tool analyzes the article text to extract relevant search terms, expands them with related concepts,
     and queries arXiv.org to find academic papers matching these terms. Results include metadata such as
     title, authors, abstract, and URLs to access the papers.
-    
+
     Args:
         article_text: The text or query to find relevant scientific papers for
         max_results: Number of results to return (default: 25, max:30)
@@ -54,7 +53,6 @@ async def arxiv_search(
         }
     
     max_results = 25 if max_results is None else max_results
-    max_results = 1
     sort_by = "relevance" if sort_by is None else sort_by
     
     max_results = min(max(1, max_results), 30)
@@ -88,11 +86,8 @@ async def arxiv_search(
         
         if not papers_urls:
             return []
-        
-        # fetch the pdfs and get the content
-        papers_content = await asyncio.gather(*[arxiv_api.fetch_pdf_and_get_article_content(paper_url) for paper_url in papers_urls])
-        
-        return papers_content
+                
+        return papers_urls
         
     except Exception as e:
         logger.error(f"Error in arXiv search: {str(e)}")

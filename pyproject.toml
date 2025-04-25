@@ -9,9 +9,11 @@ authors = [
 requires-python = ">=3.12"
 dependencies = [
     "arxiv>=2.2.0",
+    "biopython>=1.85",
     "ipykernel>=6.29.5",
     "langchain>=0.3.24",
     "langchain-community>=0.3.22",
+    "loguru>=0.7.3",
     "pydantic>=2.11.3",
     "xmltodict>=0.14.2",
 ]

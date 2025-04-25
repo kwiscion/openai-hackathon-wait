@@ -1,25 +1,21 @@
-import random
 import time
 import urllib.error
 import urllib.request
 import os
 
 import json
-import logging
 import time
 import urllib.parse
 from typing import Any, Dict, Iterator, List
-import logging
 from typing import Optional
+import requests
 
-
-logger = logging.getLogger(__name__)
-
-
+from Bio import Entrez
 from langchain_core.documents import Document
 from pydantic import BaseModel, model_validator
+from loguru import logger
 
-logger = logging.getLogger(__name__)
+Entrez.email = "your.email@example.com"
 
 
 class PubMedAPIWrapper(BaseModel):
@@ -106,7 +102,7 @@ class PubMedAPIWrapper(BaseModel):
         Search PubMed for documents matching the query.
         Return an iterator of dictionaries containing the document metadata.
         """
-
+        print(f"Searching for: {query}")
         url = (
             self.base_url_esearch
             + "db=pubmed&term="
@@ -220,42 +216,58 @@ class PubMedAPIWrapper(BaseModel):
             "Summary": summary,
         }
 
-
 class PubMedAPIWrapperImproved(PubMedAPIWrapper):
     def retrieve_article(self, uid: str, webenv: str) -> dict:
-        url = (
-            self.base_url_efetch
-            + "db=pubmed&retmode=xml&id="
-            + uid
-            + "&webenv="
-            + webenv
-        )
-        if self.api_key != "":
-            url += f"&api_key={self.api_key}"
+        print(f"Retrieving article {uid}")
+        pmcid = get_pmcid(uid)
+        if pmcid:
+            full_text = fetch_full_text(pmcid)
+            if full_text:
+                # Parse and return the full-text content
+                return {
+                    "uid": uid,
+                    "Title": full_text['documents'][0]['passages'][0]['infons']['title'],
+                    "Published": full_text['documents'][0]['passages'][0]['infons']['date'],
+                    "Summary": full_text['documents'][0]['passages'][0]['text'],
+                    "Copyright Information": full_text['documents'][0]['passages'][0]['infons'].get('copyright', '')
+                }
+        # Fallback to abstract
+        abstract = fetch_abstract(uid)
+        return {
+            "uid": uid,
+            "Title": "",  # You can parse title from the abstract if needed
+            "Published": "",
+            "Summary": abstract,
+            "Copyright Information": ""
+        }
 
-        retry = 0
-        while True:
-            try:
-                result = urllib.request.urlopen(url)
-                break
-            except urllib.error.HTTPError as e:
-                if e.code == 429 and retry < self.max_retry:
-                    # Too Many Requests errors
-                    # wait for an exponentially increasing amount of time
-                    sleep_time_random = random.uniform(0.5, 1.5)
-                    sleep_time = self.sleep_time + sleep_time_random
-                    print(  # noqa: T201
-                        f"Too Many Requests, waiting for {sleep_time:.2f} seconds..."
-                    )
-                    time.sleep(sleep_time)
-                    self.sleep_time *= 2
-                    retry += 1
-                else:
-                    raise e
 
-        xml_text = result.read().decode("utf-8")
-        text_dict = self.parse(xml_text)
-        return self._parse_article(uid, text_dict)
+def get_pmcid(pmid):
+    handle = Entrez.elink(dbfrom="pubmed", db="pmc", id=pmid)
+    records = Entrez.read(handle)
+    handle.close()
+    try:
+        pmcid = records[0]['LinkSetDb'][0]['Link'][0]['Id']
+        return pmcid
+    except (IndexError, KeyError):
+        return None
+
+
+def fetch_full_text(pmcid):
+    url = f"https://www.ncbi.nlm.nih.gov/research/bionlp/RESTful/pmcoa.cgi/BioC_json/PMC{pmcid}/unicode"
+    response = requests.get(url)
+    if response.status_code == 200:
+        return response.json()
+    else:
+        return None
+
+def fetch_abstract(pmid):
+    handle = Entrez.efetch(db="pubmed", id=pmid, rettype="abstract", retmode="text")
+    abstract = handle.read()
+    handle.close()
+    return abstract
+
+
 
 
 class PubMedAgentTool:

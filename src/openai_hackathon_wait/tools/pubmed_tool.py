@@ -1,8 +1,7 @@
-import logging
 from openai_hackathon_wait.api.pubmed import PubMedAgentTool
 from agents import function_tool
+from loguru import logger
 
-logger = logging.getLogger(__name__)
 pubmed_interface= PubMedAgentTool()
 
 
@@ -15,7 +14,6 @@ def pubmed_tool(query: str) -> str:
         query: The search query for PubMed. Be specific to get relevant re
     prntaining the summaries of the top articles matching the query.
     """
-    print(f"Searching PubMed for: {query}")
     try:
         return pubmed_interface.api_wrapper.run(query)
     except Exception as e:

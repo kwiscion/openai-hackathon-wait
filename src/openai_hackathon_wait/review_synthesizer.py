@@ -88,6 +88,21 @@ def create_synthesizer_agent(model: str = "gpt-4o-mini"):
     )
 
 
+async def run_synthesizer_agent(
+    reviews: List[Review], model: str = "gpt-4o-mini"
+) -> Optional[SynthesizedReview]:
+    try:
+        synthesizer = create_synthesizer_agent(model=model)
+        formatted_reviews = "Reviews: " + json.dumps(
+            [review.model_dump() for review in reviews]
+        )
+        result = await Runner.run(synthesizer, formatted_reviews)
+        return result.final_output_as(SynthesizedReview)
+    except Exception as e:
+        logger.error(f"Error during review synthesis: {e}")
+        return None
+
+
 class ReviewSynthesizer:
     def __init__(self, reviews_file_path: str):
         """Initialize the review synthesizer with path to the reviews JSON file."""

@@ -27,7 +27,7 @@ from .publication_decision import (
     PublicationDecisionContext,
     create_publication_decision_agent,
 )
-from .review_synthesizer import create_synthesizer_agent
+from .review_synthesizer import run_synthesizer_agent
 
 dotenv.load_dotenv()
 
@@ -123,22 +123,14 @@ async def main(paper_path: str):
             )
 
         reviews = await asyncio.gather(*review_jobs)
+        reviews_list = [review.final_output for review in reviews]
+        logger.info("Reviews gathered.")
     except Exception as e:
         logger.error(f"Error during review process: {e}")
         sys.exit(1)
 
-    ############################
-    # Review Synthesizer Agent #
-    ############################
     # Synthesize the reviews
-    try:
-        synthesizer = create_synthesizer_agent()
-        reviews_dict = [review.final_output.model_dump() for review in reviews]
-        reviews_str = json.dumps(reviews_dict)
-        synthesis = await Runner.run(synthesizer, reviews_str)
-    except Exception as e:
-        logger.error(f"Error during review synthesis: {e}")
-        sys.exit(1)
+    synthesized_review = await run_synthesizer_agent(reviews_list)
 
     ##############################
     # Publication Decision Agent #
@@ -146,7 +138,7 @@ async def main(paper_path: str):
     try:
         decision_agent = create_publication_decision_agent()
         context = PublicationDecisionContext(
-            synthesized_review=synthesis.final_output.model_dump(),
+            synthesized_review=synthesized_review.model_dump(),
             manuscript=paper_content,
             manuscript_filename=paper_path,
         )

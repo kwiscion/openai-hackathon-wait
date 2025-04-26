@@ -7,7 +7,7 @@ import dotenv
 # Import Agent/Runner from the SDK
 from loguru import logger
 
-from openai_hackathon_wait import review_orchestrator
+from openai_hackathon_wait.review_orchestrator import review_orchestrator
 
 # Import agent creation functions and models directly
 

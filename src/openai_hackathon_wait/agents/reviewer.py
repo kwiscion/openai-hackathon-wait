@@ -5,18 +5,6 @@ from pydantic import BaseModel, Field
 
 from .reviewer_assistant import reviewer_assistant_agent
 
-PROMPT = (
-    "You are a scientific reviewer. You are given a paper."
-    "You need to review the paper and provide a review, including:"
-    "- Strengths of the paper"
-    "- Weaknesses of the paper"
-    "- Comments on the paper"
-    "- Overall rating (very good, good, fair, poor, very poor)"
-    "- How confident you are in the rating (confident, unsure, not confident)"
-    "- How much time you spent reviewing the paper"
-    "- If there are any ethical concerns, please describe them."
-)
-
 
 class Rating(str, Enum):
     VERY_GOOD = "very good"

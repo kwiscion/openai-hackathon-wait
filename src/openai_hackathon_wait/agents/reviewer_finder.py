@@ -1,7 +1,8 @@
 import argparse
 import asyncio
+import sys
 from pathlib import Path
-from typing import List
+from typing import Dict, List
 
 # Use the actual Agent/Runner import path based on your project structure
 # Assuming 'agents' is the correct package/module name for the SDK
@@ -128,15 +129,52 @@ Your output should include:
     )
 
 
+async def run_reviewer_finder_agent(
+    paper_content: str, model: str = "gpt-4o-mini"
+) -> Dict[str, str]:
+    try:
+        # 1. Create and run Proposer Agent
+        logger.info("Finding reviewers: Running proposer agent...")
+        proposer_agent = create_reviewer_proposer_agent(model=model)
+        proposed_result = await Runner.run(proposer_agent, paper_content)
+        proposed_reviewers = proposed_result.final_output_as(ProposedReviewers)
+        logger.info(f"Proposed {len(proposed_reviewers.reviewers)} reviewers.")
+
+        # 2. Create and run Selector Agent
+        logger.info("Finding reviewers: Running selector agent...")
+        selector_agent = create_reviewer_selector_agent(model=model)
+        selection_input = proposed_reviewers.model_dump_json()
+        selection_result = await Runner.run(selector_agent, selection_input)
+        reviewer_selection = selection_result.final_output_as(ReviewerAssessment)
+        logger.info(
+            f"Selected {len(reviewer_selection.selected_reviewers)} reviewers based on rationale: {reviewer_selection.selection_rationale}"
+        )
+
+        # 3. Extract final dictionary
+        selected_reviewers_dict = {
+            reviewer.name: reviewer.system_prompt
+            for reviewer in reviewer_selection.selected_reviewers
+        }
+
+        logger.info(
+            f"Found {len(selected_reviewers_dict)} reviewers: {list(selected_reviewers_dict.keys())}"
+        )
+        return selected_reviewers_dict
+    except Exception as e:
+        logger.error(f"Error during reviewer finding process: {e}")
+        # Decide how to handle failure (exit, continue with defaults?)
+        sys.exit(1)  # Exit for now
+
+
 # --- Main Execution Block (for standalone testing) ---
 
 
-async def run_standalone_reviewer_flow(paper_content: str):
+async def run_standalone_reviewer_flow(paper_content: str, model: str = "gpt-4o-mini"):
     """Demonstrates running the proposer and selector agents directly."""
 
     # 1. Create and run the Proposer Agent
     logger.info("Creating and running Reviewer Proposer Agent...")
-    proposer_agent = create_reviewer_proposer_agent()
+    proposer_agent = create_reviewer_proposer_agent(model=model)
     proposed_result = await Runner.run(proposer_agent, paper_content)
 
     # Try to cast the output, handle failure
@@ -164,7 +202,7 @@ async def run_standalone_reviewer_flow(paper_content: str):
 
     # 2. Create and run the Selector Agent
     logger.info("Creating and running Reviewer Selector Agent...")
-    selector_agent = create_reviewer_selector_agent()
+    selector_agent = create_reviewer_selector_agent(model=model)
     selection_input = proposed_reviewers.model_dump_json()
     selection_result = await Runner.run(selector_agent, selection_input)
 
@@ -225,6 +263,6 @@ if __name__ == "__main__":
 
     if paper_content:
         # Initialize client for standalone execution
-        asyncio.run(run_standalone_reviewer_flow(paper_content))
+        asyncio.run(run_standalone_reviewer_flow(paper_content, model="gpt-4o-mini"))
     else:
         logger.info("Exiting due to paper loading failure.")

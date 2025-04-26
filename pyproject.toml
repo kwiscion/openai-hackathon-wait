@@ -26,6 +26,12 @@ dependencies = [
     "bio>=1.7.1",
     "xmltodict>=0.14.2",
     "anyio>=4.9.0",
+    "fastapi>=0.115.12",
+    "python-multipart>=0.0.20",
+    "psycopg2>=2.9.10",
+    "asyncpg>=0.30.0",
+    "sqlalchemy>=2.0.40",
+    "greenlet>=3.2.1",
     "torch>=2.7.0",
     "marker-pdf>=1.6.2",
 ]

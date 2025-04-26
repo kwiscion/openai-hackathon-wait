@@ -1,16 +1,13 @@
 import asyncio
 import json
 import sys
-from typing import Dict
 
 import dotenv
 
 # Import Agent/Runner from the SDK
-from agents import Runner
 from loguru import logger
-from openai import AsyncOpenAI
 
-from openai_hackathon_wait.agents.reviewer import create_reviewer_agent
+from openai_hackathon_wait.utils.markdown_converter import convert
 
 # Import agent creation functions and models directly
 from .agents.reviewer_finder import (
@@ -26,7 +23,7 @@ from .review_synthesizer import create_synthesizer_agent
 dotenv.load_dotenv()
 
 
-async def main(paper_path: str, num_reviews: int):
+async def main(paper_path: str):
     """
     Main method to run the review orchestrator.
 
@@ -34,7 +31,10 @@ async def main(paper_path: str, num_reviews: int):
         paper_path: Path to the paper file
         num_reviews: Target number of reviews (currently unused as reviewer count is determined by selection)
     """
-    client = AsyncOpenAI()
+    if paper_path.endswith(".pdf"):
+        convert(paper_path, force=False)
+        paper_path = paper_path.replace(".pdf", "/manuscript.md")
+
     # Read the paper
     try:
         with open(paper_path, "r", encoding="utf-8") as f:
@@ -151,13 +151,9 @@ async def main(paper_path: str, num_reviews: int):
 
 
 if __name__ == "__main__":
-    # Keep num_reviews for now, although it's not directly used to set the number of reviewers
-    if len(sys.argv) < 3:
-        print(
-            "Usage: python -m openai_hackathon_wait.main <paper_path> <num_reviews (Note: actual number depends on reviewer selection)>"
-        )
+    if len(sys.argv) < 2:
+        print("Usage: python -m openai_hackathon_wait.main <paper_path>")
         sys.exit(1)
 
     paper_path = sys.argv[1]
-    num_reviews = int(sys.argv[2])  # Not directly used, but kept for consistency
-    asyncio.run(main(paper_path, num_reviews))
+    asyncio.run(main(paper_path))

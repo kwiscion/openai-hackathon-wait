@@ -2,12 +2,9 @@ from agents import Agent, function_tool
 from typing_extensions import TypedDict
 from openai_hackathon_wait.rag import rag
 
-# PROMPT = (
-#     "You are a scientific reviewer. You are given a paper."
-#     "Your task is to help the reviewer by providing a feedback on a specific aspect of the paper."
-# )
 PROMPT = (
-    "Answer the question based on the provided context. Try to use provided tools to answer the question."
+    "You are a scientific reviewer. You are given a paper."
+    "Your task is to help the reviewer by providing a feedback on a specific aspect of the paper."
 )
 
 class ReviewerAssistantContext(TypedDict):

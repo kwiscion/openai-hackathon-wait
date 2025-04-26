@@ -1,21 +1,10 @@
 from enum import Enum
 
-from Agents import Agent
+from agents import Agent, RunContextWrapper, Runner
+from loguru import logger
 from pydantic import BaseModel, Field
 
 from .reviewer_assistant import reviewer_assistant_agent
-
-PROMPT = (
-    "You are a scientific reviewer. You are given a paper."
-    "You need to review the paper and provide a review, including:"
-    "- Strengths of the paper"
-    "- Weaknesses of the paper"
-    "- Comments on the paper"
-    "- Overall rating (very good, good, fair, poor, very poor)"
-    "- How confident you are in the rating (confident, unsure, not confident)"
-    "- How much time you spent reviewing the paper"
-    "- If there are any ethical concerns, please describe them."
-)
 
 
 class Rating(str, Enum):
@@ -50,21 +39,69 @@ class Review(BaseModel):
     )
 
 
+class ReviewerContext(BaseModel):
+    reviewer_persona: str = Field(description="The persona of the reviewer.")
+    paper_content: str = Field(description="The content of the paper to review.")
+    literature_context: str = Field(
+        description="A summary of the literature context of the paper."
+    )
+    technical_context: str = Field(
+        description="A summary of the technical context of the paper."
+    )
+
+
 reviewer_assistant_tool = reviewer_assistant_agent.as_tool(
     tool_name="ReviewerAssistantTool",
     tool_description="A tool that can help the reviewer by providing a feedback on a specific aspect of the paper.",
 )
 
 
+def dynamic_instructions(
+    wrapper: RunContextWrapper[ReviewerContext],
+    agent: Agent[ReviewerContext],
+) -> str:
+    ctx = wrapper.context
+    return f"""
+    You are a scientific reviewer. Your persona is:
+    {ctx.reviewer_persona}
+
+    Your task is to review the paper and provide a review.
+
+    You are given:
+    - A paper content: {ctx.paper_content}
+    - A literature context: {ctx.literature_context}
+    - A technical context: {ctx.technical_context}
+    """
+
+
 def create_reviewer_agent(
     name: str = "ReviewerAgent",
-    prompt: str = PROMPT,
     model: str = "gpt-4o-mini",
-) -> Agent:
-    return Agent(
+) -> Agent[ReviewerContext]:
+    return Agent[ReviewerContext](
         name=name,
-        instructions=prompt,
+        instructions=dynamic_instructions,
         model=model,
         output_type=Review,
         tools=[reviewer_assistant_tool],  # Provide the tool function here
     )
+
+
+async def run_reviewer_agent(
+    paper_content: str,
+    literature_context: str,
+    technical_context: str,
+    reviewer_persona: str,
+    name: str = "ReviewerAgent",
+    model: str = "gpt-4o-mini",
+) -> Review:
+    logger.info(f"Initializing reviewer: {name}")
+    reviewer = create_reviewer_agent(name=name, model=model)
+    context = ReviewerContext(
+        paper_content=paper_content,
+        literature_context=literature_context,
+        technical_context=technical_context,
+        reviewer_persona=reviewer_persona,
+    )
+    result = await Runner.run(reviewer, "Review the paper", context=context)
+    return result.final_output

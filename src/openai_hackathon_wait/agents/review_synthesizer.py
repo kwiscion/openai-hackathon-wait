@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 from loguru import logger
 from openai import OpenAI
 from pydantic import BaseModel, Field
-from Agents import Agent, Runner
+
 from openai_hackathon_wait.agents.reviewer import Review
 
 # Load environment variables (including OPENAI_API_KEY)
@@ -86,6 +86,21 @@ def create_synthesizer_agent(model: str = "gpt-4o-mini"):
         output_type=SynthesizedReview,
         model=model,
     )
+
+
+async def run_synthesizer_agent(
+    reviews: List[Review], model: str = "gpt-4o-mini"
+) -> Optional[SynthesizedReview]:
+    try:
+        synthesizer = create_synthesizer_agent(model=model)
+        formatted_reviews = "Reviews: " + json.dumps(
+            [review.model_dump() for review in reviews]
+        )
+        result = await Runner.run(synthesizer, formatted_reviews)
+        return result.final_output_as(SynthesizedReview)
+    except Exception as e:
+        logger.error(f"Error during review synthesis: {e}")
+        return None
 
 
 class ReviewSynthesizer:

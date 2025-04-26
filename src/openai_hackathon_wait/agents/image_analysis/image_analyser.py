@@ -1,6 +1,5 @@
-from typing_extensions import TypedDict
-
 from openai import OpenAI
+from typing_extensions import TypedDict
 
 client = OpenAI()
 
@@ -70,7 +69,9 @@ Structure your analysis as follows:
 You are a critical component in maintaining scientific publishing standards. Your analysis helps ensure that visual elements in scientific papers accurately and clearly represent the research findings.
 """
 
+
 class FigureExtractorContext(TypedDict):
     """Context for figure extraction."""
+
     image_paths: str
     additional_context: str

@@ -1,0 +1,15 @@
+{
+    "decision": "major revisions",
+    "rationale": "The manuscript explores an innovative framework using fMRI to study the effects of psilocybin and salvinorin-A on brain connectivity, providing significant insights for psychopharmacology. Despite its novelty and potential impact, the research faces substantial limitations, particularly the small sample size of three nonhuman primates, which raises concerns about the generalizability of the findings. The study also employs variable dosages and lacks thorough discussion on adverse effects of salvinorin-A, such as its pro-depressive associations. Additionally, there are methodological concerns regarding the statistical techniques used, namely the reliance on paired t-tests, which need strengthening for robust analysis. Ethical considerations related to the clinical use of hallucinogens, particularly their effects on vulnerable populations, should be more extensively addressed. Addressing these issues is essential for enhancing the study's reliability and contribution to the field.",
+    "key_strengths": "1. Novel use of advanced fMRI techniques to study hallucinogens.\n2. Significant findings on functional connectivity with implications for therapy in psychiatric disorders.\n3. Relevant and insightful analysis of hallucinogen effects on cognitive disorders characterized by hallucinations.",
+    "key_weaknesses": "1. Small sample size limits generalizability.\n2. Variable dosages and drug administration timing raise methodological concerns.\n3. Lack of discussion on adverse effects, particularly of salvinorin-A.\n4. Inadequate statistical analysis techniques impacting robustness.",
+    "specific_revisions": "1. Increase sample size to enhance generalizability.\n2. Standardize dosage and administration timings.\n3. Strengthen statistical analysis with more robust techniques.\n4. Provide a thorough discussion on potential adverse effects, particularly of salvinorin-A.\n5. Integrate extensive discussion on ethical considerations regarding hallucinogen use in vulnerable populations.",
+    "priority_issues": [
+        "Sample size limitations",
+        "Variable dosages and timing",
+        "Statistic analysis robustness",
+        "Adverse effects discussion",
+        "Ethical considerations"
+    ],
+    "ethical_considerations": "The potential impact on vulnerable populations and the adverse effects of salvinorin-A call for deeper exploration. The ethical implications of using hallucinogens in clinical settings must be thoroughly discussed in the revised manuscript."
+}

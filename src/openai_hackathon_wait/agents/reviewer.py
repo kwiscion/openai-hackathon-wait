@@ -1,6 +1,7 @@
 from enum import Enum
 
-from agents import Agent, RunContextWrapper
+from agents import Agent, RunContextWrapper, Runner
+from loguru import logger
 from pydantic import BaseModel, Field
 
 from .reviewer_assistant import reviewer_assistant_agent
@@ -84,3 +85,23 @@ def create_reviewer_agent(
         output_type=Review,
         tools=[reviewer_assistant_tool],  # Provide the tool function here
     )
+
+
+async def run_reviewer_agent(
+    paper_content: str,
+    literature_context: str,
+    technical_context: str,
+    reviewer_persona: str,
+    name: str = "ReviewerAgent",
+    model: str = "gpt-4o-mini",
+) -> Review:
+    logger.info(f"Initializing reviewer: {name}")
+    reviewer = create_reviewer_agent(name=name, model=model)
+    context = ReviewerContext(
+        paper_content=paper_content,
+        literature_context=literature_context,
+        technical_context=technical_context,
+        reviewer_persona=reviewer_persona,
+    )
+    result = await Runner.run(reviewer, "Review the paper", context=context)
+    return result.final_output

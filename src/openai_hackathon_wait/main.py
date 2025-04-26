@@ -11,8 +11,7 @@ from loguru import logger
 from openai import AsyncOpenAI
 
 from openai_hackathon_wait.agents.reviewer import (
-    ReviewerContext,
-    create_reviewer_agent,
+    run_reviewer_agent,
 )
 from openai_hackathon_wait.agents.structure_validator import run_validator_agent
 
@@ -23,10 +22,7 @@ from .agents.reviewer_finder import (
     create_reviewer_proposer_agent,
     create_reviewer_selector_agent,
 )
-from .publication_decision import (
-    PublicationDecisionContext,
-    create_publication_decision_agent,
-)
+from .publication_decision import run_publication_decision_agent
 from .review_synthesizer import run_synthesizer_agent
 
 dotenv.load_dotenv()
@@ -99,9 +95,6 @@ async def main(paper_path: str):
         # Decide how to handle failure (exit, continue with defaults?)
         sys.exit(1)  # Exit for now
 
-    ############################
-    #      Reviewer Agents     #
-    ############################
     # Run the review for each selected reviewer
     try:
         review_jobs = []
@@ -109,51 +102,37 @@ async def main(paper_path: str):
             f"Starting review process with {len(selected_reviewers_dict)} selected reviewers..."
         )
         for reviewer_name, system_prompt in selected_reviewers_dict.items():
-            logger.info(f"Initializing reviewer: {reviewer_name}")
-            reviewer = create_reviewer_agent(name=reviewer_name)
-            context = ReviewerContext(
-                reviewer_persona=system_prompt,
-                paper_content=paper_content,
-                literature_context="",
-                technical_context=structure_validator_result,
-                vector_store_name="",
-            )
             review_jobs.append(
-                Runner.run(reviewer, "Review the paper", context=context)
+                run_reviewer_agent(
+                    paper_content=paper_content,
+                    literature_context="",
+                    technical_context=structure_validator_result,
+                    reviewer_persona=system_prompt,
+                    name=reviewer_name,
+                )
             )
 
         reviews = await asyncio.gather(*review_jobs)
-        reviews_list = [review.final_output for review in reviews]
         logger.info("Reviews gathered.")
     except Exception as e:
         logger.error(f"Error during review process: {e}")
         sys.exit(1)
 
     # Synthesize the reviews
-    synthesized_review = await run_synthesizer_agent(reviews_list)
+    synthesized_review = await run_synthesizer_agent(reviews)
 
-    ##############################
-    # Publication Decision Agent #
-    ##############################
-    try:
-        decision_agent = create_publication_decision_agent()
-        context = PublicationDecisionContext(
-            synthesized_review=synthesized_review.model_dump(),
-            manuscript=paper_content,
-            manuscript_filename=paper_path,
-        )
-        decision = await Runner.run(
-            decision_agent, "Decide if paper is ready for publication", context=context
-        )
-    except Exception as e:
-        logger.error(f"Error during publication decision: {e}")
-        sys.exit(1)
+    # Run the publication decision agent
+    decision = await run_publication_decision_agent(
+        synthesized_review=synthesized_review,
+        manuscript=paper_content,
+        manuscript_filename=paper_path,
+    )
 
     # Save the decision
     decision_output_path = paper_path.replace(".md", "_decision.json")
     try:
         with open(decision_output_path, "w", encoding="utf-8") as f:
-            json.dump(decision.final_output.model_dump(), f, indent=4)
+            json.dump(decision.model_dump(), f, indent=4)
         logger.info(f"Decision saved to {decision_output_path}")
     except Exception as e:
         logger.error(f"Error saving decision to {decision_output_path}: {e}")

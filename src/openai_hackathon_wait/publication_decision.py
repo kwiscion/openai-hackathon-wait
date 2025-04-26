@@ -1,5 +1,6 @@
 import asyncio
 import json
+import sys
 from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -8,6 +9,8 @@ from agents import Agent, RunContextWrapper, Runner
 from dotenv import load_dotenv
 from loguru import logger
 from pydantic import BaseModel, Field
+
+from openai_hackathon_wait.review_synthesizer import SynthesizedReview
 
 # Load environment variables
 load_dotenv()
@@ -157,6 +160,32 @@ def create_publication_decision_agent(
         model=model,
         output_type=PublicationDecision,
     )
+
+
+async def run_publication_decision_agent(
+    synthesized_review: SynthesizedReview,
+    manuscript: str,
+    manuscript_filename: str,
+    literature_context: Optional[str] = None,
+    technical_analysis: Optional[str] = None,
+    model: str = "gpt-4o-mini",
+) -> PublicationDecision:
+    try:
+        decision_agent = create_publication_decision_agent(model=model)
+        context = PublicationDecisionContext(
+            synthesized_review=synthesized_review.model_dump(),
+            manuscript=manuscript,
+            literature_context=literature_context,
+            technical_analysis=technical_analysis,
+            manuscript_filename=manuscript_filename,
+        )
+        decision = await Runner.run(
+            decision_agent, "Decide if paper is ready for publication", context=context
+        )
+        return decision.final_output
+    except Exception as e:
+        logger.error(f"Error during publication decision: {e}")
+        sys.exit(1)
 
 
 # --- Helper Functions --- (Moved from Orchestrator)

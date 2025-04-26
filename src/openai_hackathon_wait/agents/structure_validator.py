@@ -309,26 +309,13 @@ def generate_final_summary(
     return final_summary
 
 
-# Create the structure validator agent for export
-structure_validator_agent = Agent[PaperValidatorContext](
-    name="Structure Validator",
-    instructions=dynamic_instructions,
-    model="gpt-4o-mini",
-    tools=[
-        analyze_paper_properties,
-        validate_structure,
-        check_grammar_punctuation,
-        generate_final_summary,
-    ],
-)
-
-
 async def run_validator_agent(
     paper_content=None,
     paper_path=None,
     paper_type=None,
     grammar_check=True,
     auto_detect=True,
+    model="gpt-4o-mini",
 ):
     """Run the structure validator on a paper.
 
@@ -342,6 +329,20 @@ async def run_validator_agent(
     Returns:
         str: The final validation output with quality assessment
     """
+
+    # Create the structure validator agent for export
+    structure_validator_agent = Agent[PaperValidatorContext](
+        name="Structure Validator",
+        instructions=dynamic_instructions,
+        model=model,
+        tools=[
+            analyze_paper_properties,
+            validate_structure,
+            check_grammar_punctuation,
+            generate_final_summary,
+        ],
+    )
+
     # Create context
     default_type = None if auto_detect else "research"
 

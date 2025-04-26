@@ -9,5 +9,5 @@ PROMPT = (
 reviewer_assistant_agent = Agent(
     name="ReviewerAssistantAgent",
     instructions=PROMPT,
-    model="gpt-4o-mini",
+    model="o4-mini",
 )

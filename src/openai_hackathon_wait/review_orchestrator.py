@@ -41,12 +41,15 @@ async def review_orchestrator(
 
         # Run the structure validator
         structure_validator_result = await run_validator_agent(
-            paper_content=paper_content, auto_detect=True, grammar_check=True
+            paper_content=paper_content,
+            auto_detect=True,
+            grammar_check=True,
+            model="gpt-4.1",
         )
 
         # Run the reviewer finder agent
         selected_reviewers_dict = await run_reviewer_finder_agent(
-            paper_content=paper_content, model="gpt-4o-mini"
+            paper_content=paper_content, model="o3"
         )
 
         # Run the review for each selected reviewer
@@ -63,6 +66,7 @@ async def review_orchestrator(
                         technical_context=structure_validator_result,
                         reviewer_persona=system_prompt,
                         name=reviewer_name,
+                        model="o3",
                     )
                 )
 
@@ -73,12 +77,13 @@ async def review_orchestrator(
             sys.exit(1)
 
         # Synthesize the reviews
-        synthesized_review = await run_synthesizer_agent(reviews)
+        synthesized_review = await run_synthesizer_agent(reviews, model="gpt-4.1")
 
         # Run the publication decision agent
         decision = await run_publication_decision_agent(
             synthesized_review=synthesized_review,
             manuscript=paper_content,
+            model="o3",
         )
 
         return decision

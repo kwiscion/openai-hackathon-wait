@@ -4,41 +4,20 @@ import httpx
 from agents import Agent, AsyncOpenAI, Runner
 from anyio import TemporaryDirectory
 from loguru import logger
-from pydantic import BaseModel
-
 from openai_hackathon_wait.api.deep_research import perform_deep_research
-from openai_hackathon_wait.rag import RAG
+
+VECTOR_STORE_NAME = "global_paper_vector_store"
+rag = None
 from openai_hackathon_wait.tools.arxiv_tool import arxiv_search
 from openai_hackathon_wait.tools.pubmed_tool import pubmed_tool
 
 
-class ArxivSearchResult(BaseModel):
-    articles_urls: list[str]
-
-
-arxiv_agent = Agent(
-    name="Arxiv agent",
-    instructions="You provide information about the papers that are related to the query. Return between 10 and 20 results by default.",
-    tools=[arxiv_search],
-    model="gpt-4o-mini",
-    output_type=ArxivSearchResult,
-)
-
-pubmed_agent = Agent(
-    name="Pubmed agent",
-    instructions="You provide information about the papers that are related to the query. Return between 10 and 20 results by default.",
-    tools=[pubmed_tool],
-    model="gpt-4o-mini",
-    output_type=list[str],
-)
-
-triage_agent = Agent(
+context_agent = Agent(
     name="Triage agent",
     instructions="""You are a helpful assistant that finds the most relevant papers from Arxiv or PubMed. 
     Decide which one is more relevant and return the results based on the proviede article text.""",
-    handoffs=[arxiv_agent], # WE can define other handoffs like pubmed agent
-    model="gpt-4o-mini",
-    output_type=ArxivSearchResult,
+    tools=[arxiv_search, pubmed_tool ], # WE can define other handoffs like pubmed agent
+    model="gpt-4o-mini"
 )
 
 
@@ -56,10 +35,16 @@ async def summarize_deep_research(deep_research_text: str) -> str:
 
 
 async def create_context(
-    client: AsyncOpenAI, vector_store_name: str, article_text: str
-) -> tuple[RAG, str]:
+    client: AsyncOpenAI, article_text: str
+) -> str:
+    global rag
+    
+    # Initialize RAG if not already done
+    if rag is None:
+        rag = await create_rag()
+        
     result = await Runner.run(
-        triage_agent,
+        context_agent,
         input=article_text,
     )
     article_urls = result.final_output
@@ -68,8 +53,6 @@ async def create_context(
     deep_research_text = deep_research_result.final_analysis
     summary = await summarize_deep_research(deep_research_text)
 
-    rag = RAG(vector_store_name)
-    await rag.create_vector_store()
 
     article_urls = article_urls.articles_urls
 
@@ -90,4 +73,4 @@ async def create_context(
 
                 await rag.upload_file(pdf_file_path)
 
-    return rag, summary
+    return summary

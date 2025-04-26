@@ -92,7 +92,7 @@ class ReviewSynthesizer:
     def load_reviews(self) -> List[Review]:
         """Load reviews from JSON file."""
         try:
-            with open(self.reviews_file_path, "r") as f:
+            with open(self.reviews_file_path, "r", encoding="utf-8") as f:
                 reviews_data = json.load(f)
 
             # The JSON structure contains review objects where each has a 'review' field
@@ -128,7 +128,7 @@ class ReviewSynthesizer:
             input_path = Path(self.reviews_file_path)
             output_path = str(input_path.parent / f"{input_path.stem}_synthesis.json")
 
-        with open(output_path, "w") as f:
+        with open(output_path, "w", encoding="utf-8") as f:
             json.dump(synthesis.model_dump(), f, indent=4)
 
         logger.info(f"Synthesis saved to {output_path}")

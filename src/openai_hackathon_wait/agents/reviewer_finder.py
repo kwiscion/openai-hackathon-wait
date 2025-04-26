@@ -1,9 +1,10 @@
 import argparse
 import asyncio
-import json
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import List
 
+# Use the actual Agent/Runner import path based on your project structure
+# Assuming 'agents' is the correct package/module name for the SDK
 from agents import Agent, Runner
 from dotenv import load_dotenv
 from loguru import logger
@@ -57,36 +58,18 @@ class ReviewerAssessment(BaseModel):
     )
 
 
-class ReviewerFinder:
-    """
-    Orchestrates the process of finding reviewers for a scientific paper.
+# --- Agent Creation Functions ---
 
-    This class uses two specialized agents:
-    1. ReviewerProposerAgent: Analyzes the paper and proposes potential reviewers.
-    2. ReviewerSelectorAgent: Selects the final set of reviewers from the proposals.
-    """
 
-    def __init__(self, paper_path: str, client: AsyncOpenAI):
-        """
-        Initialize the reviewer finder.
-
-        Args:
-            paper_path: Path to the paper file (markdown format).
-            client: An initialized AsyncOpenAI client instance.
-        """
-        self.paper_path = paper_path
-        self.client = client
-        self._initialize_agents()
-
-    def _initialize_agents(self):
-        """Initializes the proposer and selector agents with the provided client."""
-        self.reviewer_proposer_agent = Agent(
-            name="ReviewerProposerAgent",
-            instructions="""
+def create_reviewer_proposer_agent(client: AsyncOpenAI) -> Agent:
+    """Creates and returns the Reviewer Proposer Agent."""
+    return Agent(
+        name="ReviewerProposerAgent",
+        instructions="""
 You are an expert agent responsible for analyzing scientific papers and proposing appropriate reviewers.
 
 Your task is to:
-1. Analyze the content of a scientific paper provided in markdown format
+1. Analyze the content of a scientific paper provided as text input
 2. Identify key topics, methodologies, and domains of expertise covered
 3. Propose at least 4 distinct reviewer profiles with diverse expertise that would be well-suited to review this paper
 4. For each reviewer, create a detailed system prompt that could guide their review of the paper
@@ -107,16 +90,20 @@ Your output should include:
   - Areas of expertise
   - A detailed system prompt that could be used to guide their review
   - Rationale for why this reviewer profile is appropriate for this paper
-            """,
-            output_type=ProposedReviewers,
-            model="gpt-4o",
-            async_client=self.client,
-        )
+        """,
+        output_type=ProposedReviewers,
+        model="gpt-4o",
+    )
 
-        self.reviewer_selector_agent = Agent(
-            name="ReviewerSelectorAgent",
-            instructions="""
+
+def create_reviewer_selector_agent(client: AsyncOpenAI) -> Agent:
+    """Creates and returns the Reviewer Selector Agent."""
+    return Agent(
+        name="ReviewerSelectorAgent",
+        instructions="""
 You are an expert agent responsible for assessing proposed reviewers and selecting the final set of reviewers for a scientific paper.
+
+Your input will be the JSON representation of the proposed reviewers.
 
 Your task is to:
 1. Review the list of proposed reviewer profiles (identified by their specialty title)
@@ -133,155 +120,94 @@ When selecting reviewers, consider:
 - Avoiding redundancy in reviewer expertise
 
 Your output should include:
-- A dictionary of selected reviewers with the specialty title as key and system message as value
+- The list of selected reviewer profiles (including name, expertise, system_prompt, rationale)
 - A detailed rationale for your selection
 - An analysis of how the selected reviewers collectively provide diverse perspectives
-            """,
-            output_type=ReviewerAssessment,
-            model="gpt-4o",
-            async_client=self.client,
-        )
+        """,
+        output_type=ReviewerAssessment,  # Outputting the full assessment including rationale
+        model="gpt-4o",
+    )
 
-    def load_paper(self) -> str:
-        """Load paper content from file."""
-        try:
-            paper_file = Path(self.paper_path)
-            with paper_file.open("r", encoding="utf-8") as f:
-                return f.read()
-        except FileNotFoundError:
-            logger.error(f"Paper file not found: {self.paper_path}")
-            return ""
-        except Exception as e:
-            logger.error(f"Error loading paper {self.paper_path}: {e}")
-            return ""
 
-    async def find_reviewers(self) -> Optional[Dict[str, str]]:
-        """Find appropriate reviewers for the paper by running the proposer and selector agents."""
-        paper_content = self.load_paper()
-        if not paper_content:
-            logger.warning(
-                f"Could not load paper content from {self.paper_path}. Aborting reviewer search."
-            )
-            return None
+# --- Main Execution Block (for standalone testing) ---
 
-        logger.info("Analyzing paper and proposing reviewers...")
-        try:
-            proposed_result = await Runner.run(
-                self.reviewer_proposer_agent, paper_content
-            )
-            if proposed_result and proposed_result.has_output_as(ProposedReviewers):
-                proposed_reviewers = proposed_result.final_output_as(ProposedReviewers)
-            else:
-                logger.error(
-                    f"ReviewerProposerAgent failed to produce valid output. Result: {proposed_result}"
-                )
-                proposed_reviewers = None
 
-        except Exception as e:
-            logger.error(f"Error running ReviewerProposerAgent: {e}")
-            return None
+async def run_standalone_reviewer_flow(paper_content: str, client: AsyncOpenAI):
+    """Demonstrates running the proposer and selector agents directly."""
 
+    # 1. Create and run the Proposer Agent
+    logger.info("Creating and running Reviewer Proposer Agent...")
+    proposer_agent = create_reviewer_proposer_agent(client)
+    proposed_result = await Runner.run(proposer_agent, paper_content)
+
+    # Try to cast the output, handle failure
+    try:
+        if not proposed_result:
+            raise ValueError("Proposer agent returned None")
+        proposed_reviewers = proposed_result.final_output_as(ProposedReviewers)
         if not proposed_reviewers or not proposed_reviewers.reviewers:
-            logger.error(
-                "Failed to propose any reviewers or agent returned invalid data."
-            )
-            return None
+            raise ValueError("Proposer agent returned empty or invalid reviewer list")
+    except Exception as e:
+        logger.error(
+            f"Reviewer Proposer Agent failed or produced invalid output: {e}. Result: {proposed_result}"
+        )
+        return None
 
-        logger.info(f"Proposed {len(proposed_reviewers.reviewers)} reviewers")
+    logger.info(f"Proposed {len(proposed_reviewers.reviewers)} reviewers.")
 
-        logger.info("\n=== PROPOSED REVIEWERS ===")
-        for reviewer in proposed_reviewers.reviewers:
-            logger.info(f"PROPOSED REVIEWER ROLE: {reviewer.name}")
-            logger.info(f"  Expertise: {', '.join(reviewer.expertise)}")
-            logger.info(f"  Rationale: {reviewer.rationale}")
-            logger.info("---")
+    # Log proposed reviewers
+    logger.info("\n--- Proposed Reviewers ---")
+    for r in proposed_reviewers.reviewers:
+        logger.info(
+            f"  Name: {r.name}, Expertise: {r.expertise}, Rationale: {r.rationale}"
+        )
+    logger.info("-" * 20)
 
-        logger.info("\nSelecting final reviewers...")
-        selection_input = proposed_reviewers.model_dump_json()
-        try:
-            selection_result = await Runner.run(
-                self.reviewer_selector_agent, selection_input
-            )
-            if selection_result and selection_result.has_output_as(ReviewerAssessment):
-                reviewer_selection = selection_result.final_output_as(
-                    ReviewerAssessment
-                )
-            else:
-                logger.error(
-                    f"ReviewerSelectorAgent failed to produce valid output. Result: {selection_result}"
-                )
-                reviewer_selection = None
+    # 2. Create and run the Selector Agent
+    logger.info("Creating and running Reviewer Selector Agent...")
+    selector_agent = create_reviewer_selector_agent(client)
+    selection_input = proposed_reviewers.model_dump_json()
+    selection_result = await Runner.run(selector_agent, selection_input)
 
-        except Exception as e:
-            logger.error(f"Error running ReviewerSelectorAgent: {e}")
-            return None
-
+    # Try to cast the output, handle failure
+    try:
+        if not selection_result:
+            raise ValueError("Selector agent returned None")
+        reviewer_selection = selection_result.final_output_as(ReviewerAssessment)
         if not reviewer_selection or not reviewer_selection.selected_reviewers:
-            logger.error(
-                "Failed to select final reviewers or agent returned invalid data."
+            raise ValueError(
+                "Selector agent returned empty or invalid selected reviewer list"
             )
-            return None
+    except Exception as e:
+        logger.error(
+            f"Reviewer Selector Agent failed or produced invalid output: {e}. Result: {selection_result}"
+        )
+        return None
 
-        logger.info(f"Selected {len(reviewer_selection.selected_reviewers)} reviewers")
-        logger.info(f"Selection rationale: {reviewer_selection.selection_rationale}")
-        logger.info(f"Diversity analysis: {reviewer_selection.diversity_analysis}")
+    logger.info(f"Selected {len(reviewer_selection.selected_reviewers)} reviewers.")
+    logger.info(f"Selection Rationale: {reviewer_selection.selection_rationale}")
+    logger.info(f"Diversity Analysis: {reviewer_selection.diversity_analysis}")
 
-        selected_reviewers_dict = {
-            reviewer.name: reviewer.system_prompt
-            for reviewer in reviewer_selection.selected_reviewers
-        }
+    # 3. Extract the final dictionary (Name -> System Prompt)
+    selected_reviewers_dict = {
+        reviewer.name: reviewer.system_prompt
+        for reviewer in reviewer_selection.selected_reviewers
+    }
 
-        return selected_reviewers_dict
+    # Log selected reviewers
+    logger.info("\n--- Final Selected Reviewers (Name: Prompt) ---")
+    for name, prompt in selected_reviewers_dict.items():
+        logger.info(
+            f"  {name}: Prompt length = {len(prompt)}"
+        )  # Log length instead of full prompt
+    logger.info("-" * 20)
 
-    def save_reviewers(
-        self, reviewers: Dict[str, str], output_path: Optional[str] = None
-    ):
-        """Save the selected reviewers to a JSON file."""
-        if not reviewers:
-            logger.warning("No reviewers to save.")
-            return
-
-        output_file: Path
-        if output_path is None:
-            input_path = Path(self.paper_path)
-            output_file = (
-                input_path.parent / f"{input_path.stem}_reviewer_selection.json"
-            )
-        else:
-            output_file = Path(output_path)
-
-        try:
-            output_file.parent.mkdir(parents=True, exist_ok=True)
-            with output_file.open("w", encoding="utf-8") as f:
-                json.dump(reviewers, f, indent=4)
-            logger.info(f"Selected reviewers saved to {output_file}")
-        except Exception as e:
-            logger.error(f"Error saving reviewers to {output_file}: {e}")
-
-
-async def run_reviewer_finder(
-    paper_file: str, client: AsyncOpenAI
-) -> Optional[Dict[str, str]]:
-    """Runs the ReviewerFinder workflow."""
-    finder = ReviewerFinder(paper_file, client=client)
-    reviewers = await finder.find_reviewers()
-
-    if reviewers:
-        finder.save_reviewers(reviewers)
-
-        logger.info("\n=== SELECTED REVIEWERS ===")
-        for name, system_prompt in reviewers.items():
-            logger.info(f"REVIEWER ROLE: {name}")
-            logger.info("-" * 20)
-    else:
-        logger.error(f"Reviewer finding process failed for {paper_file}")
-
-    return reviewers
+    return selected_reviewers_dict
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Run the Reviewer Finder on a specified paper."
+        description="Run the Reviewer Finder agent flow on a specified paper file."
     )
     parser.add_argument(
         "paper_file",
@@ -290,9 +216,17 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    main_client = AsyncOpenAI()
+    # Load paper content from file for standalone execution
+    try:
+        paper_content = Path(args.paper_file).read_text(encoding="utf-8")
+        logger.info(f"Loaded paper content from: {args.paper_file}")
+    except Exception as e:
+        logger.error(f"Failed to load paper file {args.paper_file}: {e}")
+        paper_content = None
 
-    async def main_async():
-        await run_reviewer_finder(args.paper_file, main_client)
-
-    asyncio.run(main_async())
+    if paper_content:
+        # Initialize client for standalone execution
+        main_client = AsyncOpenAI()
+        asyncio.run(run_standalone_reviewer_flow(paper_content, main_client))
+    else:
+        logger.info("Exiting due to paper loading failure.")

@@ -60,9 +60,7 @@ class SynthesizedReview(BaseModel):
 
 
 # Create the synthesizer agent
-synthesis_agent = Agent(
-    name="ReviewSynthesisAgent",
-    instructions="""
+PROMPT = """
 You are an expert academic editor synthesizing peer reviews of a scientific manuscript.
 Your task is to analyze multiple reviews, identify patterns of agreement and disagreement,
 and provide a comprehensive synthesis that will guide the editorial decision.
@@ -78,10 +76,16 @@ When synthesizing reviews:
 
 Your synthesis should be fair, balanced, and accurately represent the full range of reviewer perspectives.
 Avoid overemphasizing either positive or negative feedback unless there is clear consensus.
-    """,
-    output_type=SynthesizedReview,
-    model="gpt-4o",  # Specify the model to use
-)
+    """
+
+
+def create_synthesizer_agent(model: str = "gpt-4o-mini"):
+    return Agent(
+        name="ReviewSynthesisAgent",
+        instructions=PROMPT,
+        output_type=SynthesizedReview,
+        model=model,
+    )
 
 
 class ReviewSynthesizer:
@@ -89,29 +93,17 @@ class ReviewSynthesizer:
         """Initialize the review synthesizer with path to the reviews JSON file."""
         self.reviews_file_path = reviews_file_path
 
-    def load_reviews(self) -> List[Review]:
-        """Load reviews from JSON file."""
-        try:
-            with open(self.reviews_file_path, "r", encoding="utf-8") as f:
-                reviews_data = json.load(f)
-
-            # The JSON structure contains review objects where each has a 'review' field
-            # that contains the actual Review data
-            reviews = [Review(**review_obj["review"]) for review_obj in reviews_data]
-            return reviews
-        except Exception as e:
-            logger.error(f"Error loading reviews: {e}")
-            return []
-
-    async def synthesize(self) -> Optional[SynthesizedReview]:
+    async def synthesize(self, reviews: List[Review]) -> Optional[SynthesizedReview]:
         """Synthesize the reviews using the agent."""
-        reviews = self.load_reviews()
         if not reviews:
             logger.warning("No reviews found or error loading reviews.")
             return None
 
         # Format the reviews as input for the agent
         formatted_reviews = json.dumps([review.model_dump() for review in reviews])
+
+        # Create the synthesis agent
+        synthesis_agent = create_synthesizer_agent()
 
         # Run the synthesis agent
         result = await Runner.run(synthesis_agent, formatted_reviews)

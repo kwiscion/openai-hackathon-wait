@@ -8,7 +8,6 @@ from typing import List
 from agents import Agent, Runner
 from dotenv import load_dotenv
 from loguru import logger
-from openai import AsyncOpenAI
 from pydantic import BaseModel, Field
 
 # Load environment variables (including OPENAI_API_KEY)
@@ -61,7 +60,7 @@ class ReviewerAssessment(BaseModel):
 # --- Agent Creation Functions ---
 
 
-def create_reviewer_proposer_agent(client: AsyncOpenAI) -> Agent:
+def create_reviewer_proposer_agent(model: str = "gpt-4o-mini") -> Agent:
     """Creates and returns the Reviewer Proposer Agent."""
     return Agent(
         name="ReviewerProposerAgent",
@@ -92,11 +91,11 @@ Your output should include:
   - Rationale for why this reviewer profile is appropriate for this paper
         """,
         output_type=ProposedReviewers,
-        model="gpt-4o",
+        model=model,
     )
 
 
-def create_reviewer_selector_agent(client: AsyncOpenAI) -> Agent:
+def create_reviewer_selector_agent(model: str = "gpt-4o-mini") -> Agent:
     """Creates and returns the Reviewer Selector Agent."""
     return Agent(
         name="ReviewerSelectorAgent",
@@ -125,19 +124,19 @@ Your output should include:
 - An analysis of how the selected reviewers collectively provide diverse perspectives
         """,
         output_type=ReviewerAssessment,  # Outputting the full assessment including rationale
-        model="gpt-4o",
+        model=model,
     )
 
 
 # --- Main Execution Block (for standalone testing) ---
 
 
-async def run_standalone_reviewer_flow(paper_content: str, client: AsyncOpenAI):
+async def run_standalone_reviewer_flow(paper_content: str):
     """Demonstrates running the proposer and selector agents directly."""
 
     # 1. Create and run the Proposer Agent
     logger.info("Creating and running Reviewer Proposer Agent...")
-    proposer_agent = create_reviewer_proposer_agent(client)
+    proposer_agent = create_reviewer_proposer_agent()
     proposed_result = await Runner.run(proposer_agent, paper_content)
 
     # Try to cast the output, handle failure
@@ -165,7 +164,7 @@ async def run_standalone_reviewer_flow(paper_content: str, client: AsyncOpenAI):
 
     # 2. Create and run the Selector Agent
     logger.info("Creating and running Reviewer Selector Agent...")
-    selector_agent = create_reviewer_selector_agent(client)
+    selector_agent = create_reviewer_selector_agent()
     selection_input = proposed_reviewers.model_dump_json()
     selection_result = await Runner.run(selector_agent, selection_input)
 
@@ -226,7 +225,6 @@ if __name__ == "__main__":
 
     if paper_content:
         # Initialize client for standalone execution
-        main_client = AsyncOpenAI()
-        asyncio.run(run_standalone_reviewer_flow(paper_content, main_client))
+        asyncio.run(run_standalone_reviewer_flow(paper_content))
     else:
         logger.info("Exiting due to paper loading failure.")

@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 from loguru import logger
 from pydantic import BaseModel, Field
 
-from openai_hackathon_wait.review_synthesizer import SynthesizedReview
+from openai_hackathon_wait.agents.review_synthesizer import SynthesizedReview
 
 # Load environment variables
 load_dotenv()

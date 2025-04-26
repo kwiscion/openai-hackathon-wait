@@ -1,29 +1,23 @@
 import asyncio
 import json
 import sys
-from typing import Dict
 
 import dotenv
 
 # Import Agent/Runner from the SDK
-from agents import Runner
 from loguru import logger
 from openai import AsyncOpenAI
 
 from openai_hackathon_wait.agents.reviewer import (
     run_reviewer_agent,
 )
+from openai_hackathon_wait.agents.reviewer_finder import run_reviewer_finder_agent
 from openai_hackathon_wait.agents.structure_validator import run_validator_agent
 
+from .agents.publication_decision import run_publication_decision_agent
+from .agents.review_synthesizer import run_synthesizer_agent
+
 # Import agent creation functions and models directly
-from .agents.reviewer_finder import (
-    ProposedReviewers,  # Needed for type checking/casting
-    ReviewerAssessment,  # Needed for type checking/casting
-    create_reviewer_proposer_agent,
-    create_reviewer_selector_agent,
-)
-from .publication_decision import run_publication_decision_agent
-from .review_synthesizer import run_synthesizer_agent
 
 dotenv.load_dotenv()
 
@@ -59,41 +53,10 @@ async def main(paper_path: str):
         paper_content=paper_content, auto_detect=True, grammar_check=True
     )
 
-    #############################
-    # Reviewer Agents Selection #
-    #############################
-    selected_reviewers_dict: Dict[str, str] | None = None
-    try:
-        # 1. Create and run Proposer Agent
-        logger.info("Finding reviewers: Running proposer agent...")
-        proposer_agent = create_reviewer_proposer_agent()
-        proposed_result = await Runner.run(proposer_agent, paper_content)
-        proposed_reviewers = proposed_result.final_output_as(ProposedReviewers)
-        logger.info(f"Proposed {len(proposed_reviewers.reviewers)} reviewers.")
-
-        # 2. Create and run Selector Agent
-        logger.info("Finding reviewers: Running selector agent...")
-        selector_agent = create_reviewer_selector_agent()
-        selection_input = proposed_reviewers.model_dump_json()
-        selection_result = await Runner.run(selector_agent, selection_input)
-        reviewer_selection = selection_result.final_output_as(ReviewerAssessment)
-        logger.info(
-            f"Selected {len(reviewer_selection.selected_reviewers)} reviewers based on rationale: {reviewer_selection.selection_rationale}"
-        )
-
-        # 3. Extract final dictionary
-        selected_reviewers_dict = {
-            reviewer.name: reviewer.system_prompt
-            for reviewer in reviewer_selection.selected_reviewers
-        }
-
-        logger.info(
-            f"Found {len(selected_reviewers_dict)} reviewers: {list(selected_reviewers_dict.keys())}"
-        )
-    except Exception as e:
-        logger.error(f"Error during reviewer finding process: {e}")
-        # Decide how to handle failure (exit, continue with defaults?)
-        sys.exit(1)  # Exit for now
+    # Run the reviewer finder agent
+    selected_reviewers_dict = await run_reviewer_finder_agent(
+        paper_content=paper_content, model="gpt-4o-mini"
+    )
 
     # Run the review for each selected reviewer
     try:

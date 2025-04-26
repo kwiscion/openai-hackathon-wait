@@ -19,7 +19,7 @@ class ArxivSearchResult(BaseModel):
 
 arxiv_agent = Agent(
     name="Arxiv agent",
-    instructions="You provide information about the papers that are related to the query. Return between 2 and 5 results by default.",
+    instructions="You provide information about the papers that are related to the query. Return between 10 and 20 results by default.",
     tools=[arxiv_search],
     model="gpt-4o-mini",
     output_type=ArxivSearchResult,
@@ -43,9 +43,22 @@ triage_agent = Agent(
 )
 
 
+async def summarize_deep_research(deep_research_text: str) -> str:
+    client = AsyncOpenAI()
+    response = await client.responses.create(
+        instructions="""You are a helpful assistant that summarizes the provided text of the deep research.
+        Return the summary focusing on the most important points relevant to the topic of the deep research output.
+        The output will be than used to guide the review of the paper process.
+        """,
+        model="gpt-4o-mini",
+        input=deep_research_text,
+    )
+    return response.output_text
+
+
 async def create_context(
     client: AsyncOpenAI, vector_store_name: str, article_text: str
-) -> RAG:
+) -> tuple[RAG, str]:
     result = await Runner.run(
         triage_agent,
         input=article_text,
@@ -53,8 +66,8 @@ async def create_context(
     article_urls = result.final_output
 
     deep_research_result = perform_deep_research(article_text)
-
     deep_research_text = deep_research_result.final_analysis
+    summary = await summarize_deep_research(deep_research_text)
 
     rag = RAG(vector_store_name)
     await rag.create_vector_store()
@@ -78,4 +91,4 @@ async def create_context(
 
                 await rag.upload_file(pdf_file_path)
 
-    return rag
+    return rag, summary

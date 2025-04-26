@@ -1,3 +1,5 @@
+<<<<<<< HEAD
+=======
 [project]
 name = "openai-hackathon-wait"
 version = "0.1.0"
@@ -26,8 +28,17 @@ dependencies = [
     "bio>=1.7.1",
     "xmltodict>=0.14.2",
     "anyio>=4.9.0",
+<<<<<<< HEAD
+    "fastapi>=0.115.12",
+    "python-multipart>=0.0.20",
+    "psycopg2>=2.9.10",
+    "asyncpg>=0.30.0",
+    "sqlalchemy>=2.0.40",
+    "greenlet>=3.2.1",
+=======
     "torch>=2.7.0",
     "marker-pdf>=1.6.2",
+>>>>>>> origin/main
 ]
 
 [project.scripts]
@@ -44,3 +55,4 @@ packages = ["src"]
 dev = [
     "ruff>=0.11.7",
 ]
+>>>>>>> a86bbd2 (also these two added)

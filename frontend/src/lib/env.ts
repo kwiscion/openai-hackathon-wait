@@ -2,6 +2,6 @@
 
 // Export environment variables with default values
 export const env = {
-  VITE_API_URL: 'http://localhost:5000/api',
-  VITE_MOCK_API: 'true'
+  VITE_API_URL: 'http://localhost:8000',
+  VITE_MOCK_API: 'false'
 }; 

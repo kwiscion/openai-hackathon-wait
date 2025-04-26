@@ -1,15 +1,15 @@
 import os
 
 import httpx
+from agents import Agent, AsyncOpenAI, Runner
 from anyio import TemporaryDirectory
-from Agents import Agent, Runner, AsyncOpenAI
 from loguru import logger
 from pydantic import BaseModel
 
 from openai_hackathon_wait.api.deep_research import perform_deep_research
+from openai_hackathon_wait.rag import RAG
 from openai_hackathon_wait.tools.arxiv_tool import arxiv_search
 from openai_hackathon_wait.tools.pubmed_tool import pubmed_tool
-from openai_hackathon_wait.rag import RAG
 
 
 class ArxivSearchResult(BaseModel):
@@ -36,7 +36,7 @@ triage_agent = Agent(
     name="Triage agent",
     instructions="""You are a helpful assistant that finds the most relevant papers from Arxiv or PubMed. 
     Decide which one is more relevant and return the results based on the proviede article text.""",
-    handoffs=[arxiv_agent],
+    handoffs=[arxiv_agent], # WE can define other handoffs like pubmed agent
     model="gpt-4o-mini",
     output_type=ArxivSearchResult,
 )
@@ -85,7 +85,7 @@ async def create_context(
                 pdf_file_path = os.path.join(
                     temp_dir, f"{article_url.split('/')[-1]}.pdf"
                 )
-                with open(pdf_file_path, "wb") as f:
+                with open(pdf_file_path, "wb", encoding="utf-8") as f:
                     f.write(response.content)
 
                 await rag.upload_file(pdf_file_path)

@@ -1,5 +1,7 @@
 import asyncio
-from openai_hackathon_wait.Agents.structure_validator import run_validator
+
+from openai_hackathon_wait.agents.structure_validator import run_validator
+
 
 async def test_validator():
     # Example markdown content for testing
@@ -33,14 +35,12 @@ Neural networks demonstrate significant potential for enhancing medical imaging 
 
     print("Testing structure validator with direct markdown input...")
     result = await run_validator(
-        paper_content=test_markdown,
-        auto_detect=True,
-        grammar_check=True,
-        min_score=5
+        paper_content=test_markdown, auto_detect=True, grammar_check=True
     )
-    
+
     print("\nValidator Output:")
     print(result)
 
+
 if __name__ == "__main__":
-    asyncio.run(test_validator()) 
+    asyncio.run(test_validator())

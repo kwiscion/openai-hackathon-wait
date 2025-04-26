@@ -1,176 +1,101 @@
 import asyncio
-from typing import Any, Dict, List
+import json
+import sys
+from typing import List
 
-from Agents import Runner
+import dotenv
+from agents import Runner
 from loguru import logger
-from pydantic import BaseModel
 
-from .agents.review_planner import review_planner_agent
+# Import the main reviewer agent which now has the tool
 from .agents.reviewer import Review, reviewer_agent
-from .agents.reviewer_assistant import reviewer_assistant_agent
 
 
-class FullReview(BaseModel):
-    assistant_feedback: List[Dict[str, Any]]
-    review: Review
+async def run_single_review(paper_content: str, paper_context: str = "") -> Review:
+    """
+    Runs a single review using the main reviewer agent, which internally uses tools.
 
+    Args:
+        paper_content: The content of the paper.
+        paper_context: Optional context about the paper.
 
-ANALYSIS_AREAS = [
-    "Novelty",
-    "Ethical Concerns",
-    "Methodology",
-]
+    Returns:
+        The final Review object.
+    """
+    logger.info("Starting review process with ReviewerAgentWithTool...")
 
+    # Construct the input for the agent (can be simple string or more structured if needed)
+    # Adding context explicitly if the agent's prompt expects it separately,
+    # otherwise, the agent might need instructions to use the context provided in the tool call.
+    # For now, we assume the agent uses the context when calling the tool.
+    agent_input = paper_content
 
-class ReviewOrchestrator:
-    def __init__(self):
-        self.reviewer_agent = reviewer_agent
-        self.reviewer_assistant_agent = reviewer_assistant_agent
+    # Run the main reviewer agent
+    result = await Runner.run(reviewer_agent, agent_input)
 
-    async def get_assistant_reviews(
-        self, paper: str, analysis_areas: List[str]
-    ) -> List[Dict[str, Any]]:
-        """
-        Get reviews from multiple assistant agents in parallel.
-        """
-        logger.info("Starting assistant reviews...")
+    final_review: Review = result.final_output
+    logger.info("Review process completed.")
+    logger.debug(
+        f"Tool Usage Summary from Review: {final_review.summary_of_tool_usage}"
+    )
 
-        # Create tasks for parallel execution
-        tasks = []
-        for analysis_area in analysis_areas:
-            logger.info(f"Creating task for reviewing {analysis_area}...")
-            prompt = f"Please review the following paper and provide a feedback on the {analysis_area}.\n\nPaper:\n\n{paper}"
-            tasks.append(Runner.run(self.reviewer_assistant_agent, prompt))
-
-        # Run all tasks in parallel
-        logger.info("Running all assistant review tasks in parallel...")
-        reviews = await asyncio.gather(*tasks)
-
-        # Process the results
-        results = []
-        for analysis_area, review in zip(analysis_areas, reviews):
-            logger.info(f"Processing review for {analysis_area}...")
-            results.append({"area": analysis_area, "review": review.final_output})
-
-        return results
-
-    async def get_main_review(
-        self, paper: str, assistant_reviews: List[Dict[str, Any]]
-    ) -> Review:
-        """
-        Get the main review from the reviewer agent, incorporating feedback from assistant reviews.
-        """
-        logger.info("Getting main review from reviewer agent...")
-
-        # Format assistant reviews for the prompt
-        assistant_feedback = "\n\n".join(
-            [
-                f"Feedback on {review['area']}:\n{review['review']}"
-                for review in assistant_reviews
-            ]
-        )
-
-        # Create the prompt for the main reviewer
-        prompt = f"""
-        Please review the following paper and provide a comprehensive review.
-        
-        Here is feedback from multiple assistant reviewers:
-        
-        {assistant_feedback}
-        
-        Paper:
-        
-        {paper}
-        """
-
-        # Get the main review
-        main_review = await Runner.run(self.reviewer_agent, prompt)
-        return main_review.final_output
-
-    async def get_analysis_areas(self, paper: str) -> List[str]:
-        """
-        Get the analysis areas for the paper.
-        """
-        prompt = f"""
-        Please review the following paper and provide a list of areas to review.
-        Exclude areas that will be included by default:
-        {", ".join(ANALYSIS_AREAS)}
-        
-        Paper:
-        
-        {paper}
-        """
-        result = await Runner.run(review_planner_agent, prompt)
-        areas = result.final_output.areas
-        return areas + ANALYSIS_AREAS
-
-    async def review_paper(self, paper: str) -> FullReview:
-        """
-        Review a paper using multiple agents in parallel and then get a main review.
-        """
-        # Get the analysis areas
-        analysis_areas = await self.get_analysis_areas(paper)
-        logger.info(f"Analysis areas: {analysis_areas}")
-
-        # Get reviews from assistant agents
-        assistant_reviews = await self.get_assistant_reviews(paper, analysis_areas)
-
-        # Get the main review
-        main_review = await self.get_main_review(paper, assistant_reviews)
-
-        # Return both assistant reviews and main review
-        return FullReview(
-            assistant_feedback=assistant_reviews,
-            review=main_review,
-        )
+    return final_review
 
 
 async def main(paper_path: str, num_reviews: int):
     """
-    Main method to run the review orchestrator.
+    Main method to run multiple reviews in parallel using the enhanced reviewer agent.
 
     Args:
         paper_path: Path to the paper file
         num_reviews: Number of reviews to get
     """
+    dotenv.load_dotenv()
+
     # Read the paper
+    logger.info(f"Reading paper from: {paper_path}")
     with open(paper_path, "r", encoding="utf-8") as f:
-        paper = f.read()
+        paper_content = f.read()
 
-    # Run the review
+    # --- Optional: Add logic here to fetch/define paper_context if available ---
+    paper_context = ""  # Example: No context available
+    # -------------------------------------------------------------------------
+
+    # Create review jobs for parallel execution
+    logger.info(f"Creating {num_reviews} review jobs...")
     review_jobs = []
-    for _ in range(num_reviews):
-        orchestrator = ReviewOrchestrator()
-        review_jobs.append(orchestrator.review_paper(paper))
+    for i in range(num_reviews):
+        logger.info(f"Adding review job {i + 1}/{num_reviews}")
+        # Pass paper_content and paper_context to each review job
+        review_jobs.append(run_single_review(paper_content, paper_context))
 
-    reviews = await asyncio.gather(*review_jobs)
+    # Run reviews in parallel
+    logger.info(f"Running {num_reviews} reviews in parallel...")
+    reviews: List[Review] = await asyncio.gather(*review_jobs)
+    logger.info("All reviews completed.")
 
     # Save the results
-    output_path = paper_path.replace(".md", "_reviews.json")
+    output_path = paper_path.replace(".md", "_reviews_tool_based.json")
+    logger.info(f"Saving reviews to: {output_path}")
     with open(output_path, "w", encoding="utf-8") as f:
-        import json
-
+        # Convert Review objects to dictionaries for JSON serialization
         reviews_dict = [review.model_dump() for review in reviews]
-
         json.dump(reviews_dict, f, indent=4)
 
-    logger.info(f"Reviews saved to {output_path}")
-    return reviews
+    logger.info(f"Reviews successfully saved to {output_path}")
 
 
 if __name__ == "__main__":
-    import sys
-
-    import dotenv
-
-    dotenv.load_dotenv()
-
     if len(sys.argv) < 3:
         print(
             "Usage: python -m openai_hackathon_wait.review_orchestrator <paper_path> <num_reviews>"
         )
         sys.exit(1)
 
-    paper_path = sys.argv[1]
-    num_reviews = int(sys.argv[2])
-    asyncio.run(main(paper_path, num_reviews))
+    paper_path_arg = sys.argv[1]
+    num_reviews_arg = int(sys.argv[2])
+
+    # Configure logger (optional, but good practice)
+    logger.add(sys.stderr, level="INFO")  # Change level to DEBUG for more details
+
+    asyncio.run(main(paper_path_arg, num_reviews_arg))

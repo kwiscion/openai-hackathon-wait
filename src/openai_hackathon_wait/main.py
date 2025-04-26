@@ -117,13 +117,14 @@ async def main(paper_path: str, num_reviews: int):
     # Synthesize the reviews
     synthesizer = create_synthesizer_agent()
     reviews_dict = [review.final_output.model_dump() for review in reviews]
-    synthesis = await Runner.run(synthesizer, reviews_dict)
+    reviews_str = json.dumps(reviews_dict)
+    synthesis = await Runner.run(synthesizer, reviews_str)
 
     # Save the synthesis
     synthesis_output_path = paper_path.replace(".md", "_synthesis.json")
     try:
         with open(synthesis_output_path, "w", encoding="utf-8") as f:
-            json.dump(synthesis.model_dump(), f, indent=4)
+            json.dump(synthesis.final_output.model_dump(), f, indent=4)
         logger.info(f"Synthesis saved to {synthesis_output_path}")
     except Exception as e:
         logger.error(f"Error saving synthesis to {synthesis_output_path}: {e}")

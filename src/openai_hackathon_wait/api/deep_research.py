@@ -22,7 +22,8 @@ firecrawl = FirecrawlApp(api_key=os.getenv("FIRECRAWL_API_KEY"))
 
 
 def on_activity(activity):
-    print(f"[{activity['type']}] {activity['message']}")
+    # print(f"[{activity['type']}] {activity['message']}")
+    pass
 
 
 def perform_deep_research(

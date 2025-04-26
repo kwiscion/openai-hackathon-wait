@@ -7,6 +7,7 @@ from agents import trace
 from loguru import logger
 from openai import AsyncOpenAI
 
+from openai_hackathon_wait.agents.create_context import create_context
 from openai_hackathon_wait.agents.publication_decision import (
     PublicationDecision,
     run_publication_decision_agent,
@@ -38,7 +39,7 @@ async def review_orchestrator(
         logger.info(f"Paper: {paper_content[:100]}...")
 
         # Create the context
-        # rag, paper_context = await create_context(client, paper_id, paper_content)
+        paper_context = await create_context(client, paper_content)
 
         # Run the structure validator
         structure_validator_result = await run_validator_agent(
@@ -63,7 +64,7 @@ async def review_orchestrator(
                 review_jobs.append(
                     run_reviewer_agent(
                         paper_content=paper_content,
-                        literature_context="",
+                        literature_context=paper_context,
                         technical_context=structure_validator_result,
                         reviewer_persona=system_prompt,
                         name=reviewer_name,
@@ -84,6 +85,8 @@ async def review_orchestrator(
         decision = await run_publication_decision_agent(
             synthesized_review=synthesized_review,
             manuscript=paper_content,
+            literature_context=paper_context,
+            technical_analysis=structure_validator_result,
             model="o3",
         )
 

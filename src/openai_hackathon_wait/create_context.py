@@ -36,7 +36,7 @@ triage_agent = Agent(
     name="Triage agent",
     instructions="""You are a helpful assistant that finds the most relevant papers from Arxiv or PubMed. 
     Decide which one is more relevant and return the results based on the proviede article text.""",
-    handoffs=[arxiv_agent],
+    handoffs=[arxiv_agent], # WE can define other handoffs like pubmed agent
     model="gpt-4o-mini",
     output_type=ArxivSearchResult,
 )

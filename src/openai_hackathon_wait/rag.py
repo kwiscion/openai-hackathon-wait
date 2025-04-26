@@ -53,4 +53,5 @@ class RAG:
             ],
         )
         model_output = response.output
-        return model_output
+
+        return [obj.text for obj in model_output[1].content]

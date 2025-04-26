@@ -1,16 +1,15 @@
 import os
-import tempfile
 
 import httpx
+from agents import Agent, AsyncOpenAI, Runner
 from anyio import TemporaryDirectory
-from agents import Agent, Runner, AsyncOpenAI
 from loguru import logger
 from pydantic import BaseModel
 
 from openai_hackathon_wait.api.deep_research import perform_deep_research
+from openai_hackathon_wait.rag import RAG
 from openai_hackathon_wait.tools.arxiv_tool import arxiv_search
 from openai_hackathon_wait.tools.pubmed_tool import pubmed_tool
-from openai_hackathon_wait.rag import RAG
 
 
 class ArxivSearchResult(BaseModel):
@@ -86,7 +85,7 @@ async def create_context(
                 pdf_file_path = os.path.join(
                     temp_dir, f"{article_url.split('/')[-1]}.pdf"
                 )
-                with open(pdf_file_path, "wb") as f:
+                with open(pdf_file_path, "wb", encoding="utf-8") as f:
                     f.write(response.content)
 
                 await rag.upload_file(pdf_file_path)

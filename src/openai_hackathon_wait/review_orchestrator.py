@@ -28,7 +28,7 @@ class ReviewOrchestrator:
         self.reviewer_assistant_agent = reviewer_assistant_agent
 
     async def get_assistant_reviews(
-        self, paper: str, analysis_areas: List[str]
+        self, paper: str, analysis_areas: List[str], paper_context: str = ""
     ) -> List[Dict[str, Any]]:
         """
         Get reviews from multiple assistant agents in parallel.
@@ -39,7 +39,17 @@ class ReviewOrchestrator:
         tasks = []
         for analysis_area in analysis_areas:
             logger.info(f"Creating task for reviewing {analysis_area}...")
-            prompt = f"Please review the following paper and provide a feedback on the {analysis_area}.\n\nPaper:\n\n{paper}"
+            prompt = f"""
+            Please review the following paper and provide a feedback on the {analysis_area}.
+            
+            Paper:
+            
+            {paper}
+            
+            Paper context:
+            
+            {paper_context}
+            """
             tasks.append(Runner.run(self.reviewer_assistant_agent, prompt))
 
         # Run all tasks in parallel
@@ -55,7 +65,10 @@ class ReviewOrchestrator:
         return results
 
     async def get_main_review(
-        self, paper: str, assistant_reviews: List[Dict[str, Any]]
+        self,
+        paper: str,
+        assistant_reviews: List[Dict[str, Any]],
+        paper_context: str = "",
     ) -> Review:
         """
         Get the main review from the reviewer agent, incorporating feedback from assistant reviews.
@@ -81,13 +94,19 @@ class ReviewOrchestrator:
         Paper:
         
         {paper}
+        
+        Paper context:
+        
+        {paper_context}
         """
 
         # Get the main review
         main_review = await Runner.run(self.reviewer_agent, prompt)
         return main_review.final_output
 
-    async def get_analysis_areas(self, paper: str) -> List[str]:
+    async def get_analysis_areas(
+        self, paper: str, paper_context: str = ""
+    ) -> List[str]:
         """
         Get the analysis areas for the paper.
         """
@@ -99,24 +118,48 @@ class ReviewOrchestrator:
         Paper:
         
         {paper}
+        
+        Paper context:
+        
+        {paper_context}
         """
         result = await Runner.run(review_planner_agent, prompt)
         areas = result.final_output.areas
         return areas + ANALYSIS_AREAS
 
-    async def review_paper(self, paper: str) -> FullReview:
+    async def review_paper(
+        self,
+        paper: str,
+        additional_analysis: List[Dict[str, Any]] = [],
+        paper_context: str = "",
+    ) -> FullReview:
         """
         Review a paper using multiple agents in parallel and then get a main review.
+
+        Args:
+            paper: The paper to review
+            additional_analysis: Additional analysis done by other agents
+            paper_context: Context about the paper
         """
         # Get the analysis areas
-        analysis_areas = await self.get_analysis_areas(paper)
+        analysis_areas = await self.get_analysis_areas(paper, paper_context)
         logger.info(f"Analysis areas: {analysis_areas}")
 
         # Get reviews from assistant agents
-        assistant_reviews = await self.get_assistant_reviews(paper, analysis_areas)
+        assistant_reviews = await self.get_assistant_reviews(
+            paper, analysis_areas, paper_context
+        )
+
+        # Add additional analysis to the assistant reviews
+        for analysis in additional_analysis:
+            assistant_reviews.append(
+                {"area": analysis["area"], "review": analysis["review"]}
+            )
 
         # Get the main review
-        main_review = await self.get_main_review(paper, assistant_reviews)
+        main_review = await self.get_main_review(
+            paper, assistant_reviews, paper_context
+        )
 
         # Return both assistant reviews and main review
         return FullReview(

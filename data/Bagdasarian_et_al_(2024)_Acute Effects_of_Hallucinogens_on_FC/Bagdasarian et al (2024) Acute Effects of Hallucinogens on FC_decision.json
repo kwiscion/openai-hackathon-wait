@@ -1,0 +1,14 @@
+{
+    "decision": "major revisions",
+    "rationale": "The manuscript presents an innovative comparative analysis of the effects of psilocybin and salvinorin-A on functional connectivity highlighting potential clinical applications. The use of fMRI to assess brain connectivity provides robust methodological support. However, critical issues necessitate substantial revisions. The small sample size of three nonhuman primates limits the generalizability and statistical power of the findings. Additionally, the variability in drug dosing complicates comparisons, and the lack of behavioral data hinders the ability to correlate neurobiological changes with subjective and clinical outcomes. Furthermore, potential confounding factors such as anesthesia effects and inconsistencies in dosing timepoints need to be addressed. Ethical concerns regarding the humane treatment of nonhuman primates must also be thoroughly documented and ensured.",
+    "key_strengths": "1. Novel comparative approach between serotonergic and non-serotonergic hallucinogens.\n2. Rigorous use of fMRI and brain connectivity analysis.\n3. Potential clinical relevance for psychiatric applications articulated.\n4. Increased understanding of 5-HT2AR and KOR receptor dynamics.",
+    "key_weaknesses": "1. Small sample size of only three nonhuman primates.\n2. Variability in dosing for psilocybin and salvinorin-A.\n3. Absence of behavioral correlates to link functional changes with subjective experiences.\n4. Confounding factors from anesthesia and timing of drug administration.",
+    "specific_revisions": "1. Increase the sample size or provide a stronger justification for the current size.\n2. Address dosing variability and provide a clearer comparison framework.\n3. Include behavioral assessments or discuss the challenges in doing so.\n4. Discuss potential anesthesia effects and control measures.\n5. Detail ethical considerations and protocols for the use of nonhuman primates in the study.",
+    "priority_issues": [
+        "Sample size and generalizability",
+        "Variable dosing regimens",
+        "Lack of behavioral data",
+        "Confounding from anesthesia"
+    ],
+    "ethical_considerations": "The use of nonhuman primates requires extensive ethical justifications and adherence to humane treatment standards. More comprehensive documentation on monitoring practices during experimentations is needed."
+}

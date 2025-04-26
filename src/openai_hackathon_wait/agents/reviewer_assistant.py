@@ -1,4 +1,4 @@
-from Agents import Agent
+from agents import Agent
 
 PROMPT = (
     "You are a scientific reviewer. You are given a paper."

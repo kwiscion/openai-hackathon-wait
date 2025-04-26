@@ -1,6 +1,6 @@
 from enum import Enum
 
-from Agents import Agent
+from agents import Agent, RunContextWrapper
 from pydantic import BaseModel, Field
 
 from .reviewer_assistant import reviewer_assistant_agent
@@ -50,20 +50,49 @@ class Review(BaseModel):
     )
 
 
+class ReviewerContext(BaseModel):
+    reviewer_persona: str = Field(description="The persona of the reviewer.")
+    paper_content: str = Field(description="The content of the paper to review.")
+    literature_context: str = Field(
+        description="A summary of the literature context of the paper."
+    )
+    technical_context: str = Field(
+        description="A summary of the technical context of the paper."
+    )
+    vector_store_name: str = Field(description="The name of the vector store to use.")
+
+
 reviewer_assistant_tool = reviewer_assistant_agent.as_tool(
     tool_name="ReviewerAssistantTool",
     tool_description="A tool that can help the reviewer by providing a feedback on a specific aspect of the paper.",
 )
 
 
+def dynamic_instructions(
+    wrapper: RunContextWrapper[ReviewerContext],
+    agent: Agent[ReviewerContext],
+) -> str:
+    ctx = wrapper.context
+    return f"""
+    You are a scientific reviewer. Your persona is:
+    {ctx.reviewer_persona}
+
+    Your task is to review the paper and provide a review.
+
+    You are given:
+    - A paper content: {ctx.paper_content}
+    - A literature context: {ctx.literature_context}
+    - A technical context: {ctx.technical_context}
+    """
+
+
 def create_reviewer_agent(
     name: str = "ReviewerAgent",
-    prompt: str = PROMPT,
     model: str = "gpt-4o-mini",
-) -> Agent:
-    return Agent(
+) -> Agent[ReviewerContext]:
+    return Agent[ReviewerContext](
         name=name,
-        instructions=prompt,
+        instructions=dynamic_instructions,
         model=model,
         output_type=Review,
         tools=[reviewer_assistant_tool],  # Provide the tool function here

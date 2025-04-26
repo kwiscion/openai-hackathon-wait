@@ -10,7 +10,10 @@ from agents import Runner
 from loguru import logger
 from openai import AsyncOpenAI
 
-from openai_hackathon_wait.agents.reviewer import create_reviewer_agent
+from openai_hackathon_wait.agents.reviewer import (
+    ReviewerContext,
+    create_reviewer_agent,
+)
 
 # Import agent creation functions and models directly
 from .agents.reviewer_finder import (
@@ -109,8 +112,15 @@ async def main(paper_path: str, num_reviews: int):
     )
     for reviewer_name, system_prompt in selected_reviewers_dict.items():
         logger.info(f"Initializing reviewer: {reviewer_name}")
-        reviewer = create_reviewer_agent(name=reviewer_name, prompt=system_prompt)
-        review_jobs.append(Runner.run(reviewer, paper_content))
+        reviewer = create_reviewer_agent(name=reviewer_name)
+        context = ReviewerContext(
+            reviewer_persona=system_prompt,
+            paper_content=paper_content,
+            literature_context="",
+            technical_context="",
+            vector_store_name="",
+        )
+        review_jobs.append(Runner.run(reviewer, "Review the paper", context=context))
 
     reviews = await asyncio.gather(*review_jobs)
 

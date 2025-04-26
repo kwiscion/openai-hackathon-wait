@@ -1,13 +1,13 @@
 {
     "decision": "major revisions",
-    "rationale": "The manuscript offers significant novelty by comparing serotonergic and non-serotonergic hallucinogens, contributing valuable insights to the field of psychedelic research. However, major methodological and ethical issues require attention. A small sample size limits generalizability and the manuscript lacks sufficient detail on statistical methods, impacting the study's robustness. Ethical considerations, particularly the incomplete explanation of animal welfare protocols, are concerning. These weaknesses must be addressed to ensure the study's scientific and ethical integrity.",
-    "key_strengths": "1. Novelty in comparing serotonergic and non-serotonergic hallucinogens.\n2. Strong integration with existing literature.\n3. Potential significant impact on understanding therapeutic uses of psychedelics.",
-    "key_weaknesses": "1. Small sample size limits generalizability.\n2. Insufficient methodological details, especially statistical methods.\n3. Unclear distinctions between different analyses.\n4. Incomplete ethical considerations regarding animal welfare.",
-    "specific_revisions": "1. Increase sample size if possible or provide a detailed justification for the current size.\n2. Enhance the description of statistical methods and clarify distinctions between different analyses.\n3. Provide a thorough discussion on ethical considerations, particularly regarding animal welfare protocols.",
+    "rationale": "The manuscript offers valuable insights into the effects of psilocybin and salvinorin-A on brain connectivity, particularly through its novel focus on the claustrum and consciousness. The study utilizes a robust within-subject design which is a significant strength. However, several key issues limit the manuscript's impact and require substantial revisions. The small sample size of N=3 raises concerns about the generalizability of the findings. Additionally, the manuscript lacks discussion on effect sizes, statistical validation, and does not correlate connectivity changes with behavioral outcomes, all of which undermine the conclusions' strength. Ethical concerns regarding animal use must also be addressed, providing more detail on animal welfare practices.",
+    "key_strengths": "1. Novel investigation of psilocybin and salvinorin-A effects on brain connectivity.\n2. Robust within-subject design effectively controlling inter-animal variability.\n3. Insightful focus on the claustrum and consciousness.",
+    "key_weaknesses": "1. Small sample size (N=3) limits generalizability.\n2. Lack of discussion on effect sizes and statistical model validation.\n3. No correlation between connectivity changes and behavioral outcomes.\n4. Ethical concerns regarding the use of nonhuman primates.",
+    "specific_revisions": "1. Expand discussion on effect sizes and validate statistical models used.\n2. Introduce correlations between connectivity changes and behavioral outcomes.\n3. Provide detailed information on animal welfare and care practices.\n4. Separate Results and Discussion sections for clarity and expand the conclusion.\n5. Address minor language issues, such as punctuation consistency and use of active voice.",
     "priority_issues": [
-        "Sample size and methodological transparency",
-        "Statistical method details",
-        "Ethical considerations regarding animal welfare"
+        "Expand on effect sizes and statistical model validation.",
+        "Correlate connectivity changes with behavioral outcomes.",
+        "Detail animal welfare and care practices."
     ],
-    "ethical_considerations": "The use of nonhuman primates presents ethical concerns that need addressing, specifically regarding animal welfare, dosage justification, and long-term monitoring protocols. Detailed explanations are required to align with ethical standards."
+    "ethical_considerations": "The manuscript raises ethical concerns due to the use of nonhuman primates. A comprehensive justification for their use, along with detailed care practices, should be included to align with ethical standards."
 }

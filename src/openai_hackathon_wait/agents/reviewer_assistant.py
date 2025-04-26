@@ -1,4 +1,4 @@
-from Agents import Agent
+from agents import Agent
 
 PROMPT = (
     "You are a scientific reviewer. You are given a paper."
@@ -9,5 +9,5 @@ PROMPT = (
 reviewer_assistant_agent = Agent(
     name="ReviewerAssistantAgent",
     instructions=PROMPT,
-    model="gpt-4o-mini",
+    model="o4-mini",
 )

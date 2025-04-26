@@ -1,13 +1,14 @@
 {
-    "decision": "major revisions",
-    "rationale": "The manuscript offers valuable insights into the effects of psilocybin and salvinorin-A on brain connectivity, particularly through its novel focus on the claustrum and consciousness. The study utilizes a robust within-subject design which is a significant strength. However, several key issues limit the manuscript's impact and require substantial revisions. The small sample size of N=3 raises concerns about the generalizability of the findings. Additionally, the manuscript lacks discussion on effect sizes, statistical validation, and does not correlate connectivity changes with behavioral outcomes, all of which undermine the conclusions' strength. Ethical concerns regarding animal use must also be addressed, providing more detail on animal welfare practices.",
-    "key_strengths": "1. Novel investigation of psilocybin and salvinorin-A effects on brain connectivity.\n2. Robust within-subject design effectively controlling inter-animal variability.\n3. Insightful focus on the claustrum and consciousness.",
-    "key_weaknesses": "1. Small sample size (N=3) limits generalizability.\n2. Lack of discussion on effect sizes and statistical model validation.\n3. No correlation between connectivity changes and behavioral outcomes.\n4. Ethical concerns regarding the use of nonhuman primates.",
-    "specific_revisions": "1. Expand discussion on effect sizes and validate statistical models used.\n2. Introduce correlations between connectivity changes and behavioral outcomes.\n3. Provide detailed information on animal welfare and care practices.\n4. Separate Results and Discussion sections for clarity and expand the conclusion.\n5. Address minor language issues, such as punctuation consistency and use of active voice.",
+    "decision": "minor revisions",
+    "rationale": "The manuscript presents novel and impactful insights into the effects of psilocybin and salvinorin-A on brain connectivity, enhancing our comprehension of hallucinogens. Despite its strengths, the paper has methodological constraints, such as its small sample size, which limits generalizability. Improvements in methodological detail, statistical analysis, and a clearer connection between neuropharmacological mechanisms and experiential outcomes would increase its contribution to the field. Ethical considerations regarding nonhuman primate use need enhanced documentation, with descriptions of animal welfare protocols and the ethical justification for the study. The technical suggestions regarding structure and writing quality also warrant attention for clarity and presentation.",
+    "key_strengths": "1. Novel insights into hallucinogens' effects on brain networks.\n2. Exploration of the claustrum's role in consciousness.\n3. Strong potential to contribute to understanding functional connectivity in hallucinogenic states.",
+    "key_weaknesses": "1. Small sample size (three rhesus macaques) limiting generalizability.\n2. Need for more robust connectivity analysis methods and statistical corrections.\n3. Lack of temporal analysis and ambiguous linkage between observed neural changes and subjective experiences.",
+    "specific_revisions": "1. Justification and detailed documentation of ethical protocols regarding animal use.\n2. Elaborate on connectivity analysis methods and statistical corrections.\n3. Expand on neuropharmacological and experiential linkages.\n4. Address structural and typographic issues as outlined in the technical analysis.",
     "priority_issues": [
-        "Expand on effect sizes and statistical model validation.",
-        "Correlate connectivity changes with behavioral outcomes.",
-        "Detail animal welfare and care practices."
+        "Clarification of ethical considerations including welfare and monitoring procedures",
+        "Incorporation of additional connectivity analysis methods",
+        "Enhancement of statistical analysis detail and corrections",
+        "Separation of results and discussion for clarity"
     ],
-    "ethical_considerations": "The manuscript raises ethical concerns due to the use of nonhuman primates. A comprehensive justification for their use, along with detailed care practices, should be included to align with ethical standards."
+    "ethical_considerations": "The manuscript involves the use of nonhuman primates for hallucinogenic research. Clear ethical justifications and detailed welfare protocols must be included to ensure conforming to ethical standards."
 }

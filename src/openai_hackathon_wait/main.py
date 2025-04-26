@@ -1,19 +1,26 @@
 import asyncio
 import json
 import sys
+from typing import Dict
 
 import dotenv
+
+# Import Agent/Runner from the SDK
+from agents import Runner
 from loguru import logger
 from openai import AsyncOpenAI
 
-from openai_hackathon_wait.agents.structure_validator import run_validator
-from openai_hackathon_wait.create_context import create_context
+from openai_hackathon_wait.agents.reviewer import create_reviewer_agent
 
-# Import ReviewerFinder
-from .agents.reviewer_finder import ReviewerFinder
+# Import agent creation functions and models directly
+from .agents.reviewer_finder import (
+    ProposedReviewers,  # Needed for type checking/casting
+    ReviewerAssessment,  # Needed for type checking/casting
+    create_reviewer_proposer_agent,
+    create_reviewer_selector_agent,
+)
 from .publication_decision import PublicationDecisionOrchestrator
-from .review_orchestrator import ReviewOrchestrator
-from .review_synthesizer import ReviewSynthesizer
+from .review_synthesizer import create_synthesizer_agent
 
 dotenv.load_dotenv()
 
@@ -24,106 +31,122 @@ async def main(paper_path: str, num_reviews: int):
 
     Args:
         paper_path: Path to the paper file
-        num_reviews: Number of reviews to get
+        num_reviews: Target number of reviews (currently unused as reviewer count is determined by selection)
     """
     client = AsyncOpenAI()
     # Read the paper
-    with open(paper_path, "r", encoding="utf-8") as f:
-        paper = f.read()
+    try:
+        with open(paper_path, "r", encoding="utf-8") as f:
+            paper_content = f.read()
+    except FileNotFoundError:
+        logger.error(f"Paper file not found: {paper_path}")
+        sys.exit(1)
+    except Exception as e:
+        logger.error(f"Error reading paper file {paper_path}: {e}")
+        sys.exit(1)
 
-    logger.info(f"Paper: {paper[:50]}...")
+    logger.info(f"Paper: {paper_content[:100]}...")
     paper_id = "paper_" + paper_path.split("/")[-1].split(".")[0][:50]
 
     # Create the context
-    rag, paper_context = await create_context(client, paper_id, paper)
+    # rag, paper_context = await create_context(client, paper_id, paper_content)
 
-    # Save the context
-    with open(paper_path.replace(".md", "_context.json"), "w", encoding="utf-8") as f:
-        json.dump(paper_context, f, indent=4)
+    # # Run the structure validator
+    # structure_validator_result = await run_validator(
+    #     paper_content=paper_content, auto_detect=True, grammar_check=True
+    # )
 
-    # Run the structure validator
-    structure_validator_result = await run_validator(
-        paper_content=paper, auto_detect=True, grammar_check=True
-    )
+    # additional_analysis = [
+    #     {"area": "structure and language", "review": structure_validator_result}
+    # ]
 
-    # Save the structure validator result
-    structure_validator_path = paper_path.replace(".md", "_structure_validator.json")
-    with open(structure_validator_path, "w", encoding="utf-8") as f:
-        json.dump(structure_validator_result, f, indent=4)
+    # --- Find Reviewers using direct agent calls ---
+    selected_reviewers_dict: Dict[str, str] | None = None
+    try:
+        # 1. Create and run Proposer Agent
+        logger.info("Finding reviewers: Running proposer agent...")
+        proposer_agent = create_reviewer_proposer_agent()
+        proposed_result = await Runner.run(proposer_agent, paper_content)
+        proposed_reviewers = proposed_result.final_output_as(ProposedReviewers)
+        logger.info(f"Proposed {len(proposed_reviewers.reviewers)} reviewers.")
 
-    logger.info(
-        f"Structure validator result saved to {paper_path.replace('.md', '_structure_validator.json')}"
-    )
+        # 2. Create and run Selector Agent
+        logger.info("Finding reviewers: Running selector agent...")
+        selector_agent = create_reviewer_selector_agent()
+        selection_input = proposed_reviewers.model_dump_json()
+        selection_result = await Runner.run(selector_agent, selection_input)
+        reviewer_selection = selection_result.final_output_as(ReviewerAssessment)
+        logger.info(
+            f"Selected {len(reviewer_selection.selected_reviewers)} reviewers based on rationale: {reviewer_selection.selection_rationale}"
+        )
 
-    additional_analysis = [
-        {"area": "structure and language", "review": structure_validator_result}
-    ]
+        # 3. Extract final dictionary
+        selected_reviewers_dict = {
+            reviewer.name: reviewer.system_prompt
+            for reviewer in reviewer_selection.selected_reviewers
+        }
 
-    # --- Find Reviewers --- 
-    logger.info(f"Finding reviewers for paper: {paper_path}")
-    finder = ReviewerFinder(paper_path)
-    # Pass client if needed by ReviewerFinder internally, assuming it initializes its own for now
-    selected_reviewers = await finder.find_reviewers()
+    except Exception as e:
+        logger.error(f"Error during reviewer finding process: {e}")
+        # Decide how to handle failure (exit, continue with defaults?)
+        sys.exit(1)  # Exit for now
 
-    if not selected_reviewers:
-        logger.error("Could not find reviewers. Exiting.")
+    # Check if reviewers were found
+    if not selected_reviewers_dict:
+        logger.error("Could not find/select reviewers. Exiting.")
         sys.exit(1)
 
-    logger.info(f"Found {len(selected_reviewers)} reviewers: {list(selected_reviewers.keys())}")
-    # Save the selected reviewers (optional, finder might already do it)
-    finder.save_reviewers(selected_reviewers) 
+    logger.info(
+        f"Found {len(selected_reviewers_dict)} reviewers: {list(selected_reviewers_dict.keys())}"
+    )
+    # Removed finder.save_reviewers() call
     # --- End Find Reviewers ---
 
     # Run the review for each selected reviewer
     review_jobs = []
-    # The num_reviews argument is now less relevant, we run one review per selected reviewer
-    logger.info(f"Starting review process with {len(selected_reviewers)} selected reviewers...")
-    for reviewer_name, system_prompt in selected_reviewers.items():
-        logger.info(f"Initializing review orchestrator for: {reviewer_name}")
-        orchestrator = ReviewOrchestrator(reviewer_name=reviewer_name, system_prompt=system_prompt)
-        review_jobs.append(
-            orchestrator.review_paper(paper, additional_analysis, paper_context)
-        )
+    logger.info(
+        f"Starting review process with {len(selected_reviewers_dict)} selected reviewers..."
+    )
+    for reviewer_name, system_prompt in selected_reviewers_dict.items():
+        logger.info(f"Initializing reviewer: {reviewer_name}")
+        reviewer = create_reviewer_agent(name=reviewer_name, prompt=system_prompt)
+        review_jobs.append(Runner.run(reviewer, paper_content))
 
     reviews = await asyncio.gather(*review_jobs)
 
-    # Save the results
-    reviews_output_path = paper_path.replace(".md", "_reviews.json")
-    with open(reviews_output_path, "w", encoding="utf-8") as f:
-        reviews_dict = [review.model_dump() for review in reviews]
-        json.dump(reviews_dict, f, indent=4)
-
-    logger.info(f"Reviews saved to {reviews_output_path}")
-
     # Synthesize the reviews
-    synthesizer = ReviewSynthesizer(reviews_output_path)
-    synthesis = await synthesizer.synthesize()
+    synthesizer = create_synthesizer_agent()
+    reviews_dict = [review.final_output.model_dump() for review in reviews]
+    synthesis = await Runner.run(synthesizer, reviews_dict)
 
     # Save the synthesis
-    synthesis_output_path = reviews_output_path.replace(
-        "_reviews.json", "_synthesis.json"
-    )
-    with open(synthesis_output_path, "w", encoding="utf-8") as f:
-        json.dump(synthesis.model_dump(), f, indent=4)
-
-    logger.info(f"Synthesis saved to {synthesis_output_path}")
+    synthesis_output_path = paper_path.replace(".md", "_synthesis.json")
+    try:
+        with open(synthesis_output_path, "w", encoding="utf-8") as f:
+            json.dump(synthesis.model_dump(), f, indent=4)
+        logger.info(f"Synthesis saved to {synthesis_output_path}")
+    except Exception as e:
+        logger.error(f"Error saving synthesis to {synthesis_output_path}: {e}")
 
     # Make the decision
+    # Pass client to PublicationDecisionOrchestrator if needed
     decision_orchestrator = PublicationDecisionOrchestrator(
         synthesis_output_path,
         paper_path,
-        literature_context_path=paper_context,
-        technical_analysis_path=structure_validator_path,
+        # literature_context_path=context_path,
+        # technical_analysis_path=structure_validator_path,
     )
 
     decision = await decision_orchestrator.make_decision()
 
     # Save the decision
     decision_output_path = paper_path.replace(".md", "_decision.json")
-    with open(decision_output_path, "w", encoding="utf-8") as f:
-        json.dump(decision.model_dump(), f, indent=4)
-
-    logger.info(f"Decision saved to {decision_output_path}")
+    try:
+        with open(decision_output_path, "w", encoding="utf-8") as f:
+            json.dump(decision.model_dump(), f, indent=4)
+        logger.info(f"Decision saved to {decision_output_path}")
+    except Exception as e:
+        logger.error(f"Error saving decision to {decision_output_path}: {e}")
 
 
 if __name__ == "__main__":
@@ -135,5 +158,5 @@ if __name__ == "__main__":
         sys.exit(1)
 
     paper_path = sys.argv[1]
-    num_reviews = int(sys.argv[2]) # Not directly used, but kept for consistency 
+    num_reviews = int(sys.argv[2])  # Not directly used, but kept for consistency
     asyncio.run(main(paper_path, num_reviews))

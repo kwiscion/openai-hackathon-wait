@@ -1,7 +1,9 @@
 from enum import Enum
 
-from agents import Agent
+from Agents import Agent
 from pydantic import BaseModel, Field
+
+from .reviewer_assistant import reviewer_assistant_agent
 
 PROMPT = (
     "You are a scientific reviewer. You are given a paper."
@@ -35,20 +37,34 @@ class Review(BaseModel):
 
     weaknesses: str = Field(description="The weaknesses of the paper.")
 
-    comments: str = Field(description="Comments on the paper.")
+    comments: str = Field(
+        description="Detailed comments on the paper, integrating feedback on specific aspects."
+    )
 
-    rating: Rating = Field(description="The rating of the paper.")
+    rating: Rating = Field(description="The overall rating of the paper.")
 
     confidence: Confidence = Field(description="How confident you are in the rating.")
 
-    ethical_concerns: str | None = Field(
-        description="If there are any ethical concerns, please describe them."
+    ethical_concerns: str = Field(
+        description="Any ethical concerns raised during the review."
     )
 
 
-reviewer_agent = Agent(
-    name="ReviewerAgent",
-    instructions=PROMPT,
-    model="gpt-4o-mini",
-    output_type=Review,
+reviewer_assistant_tool = reviewer_assistant_agent.as_tool(
+    tool_name="ReviewerAssistantTool",
+    tool_description="A tool that can help the reviewer by providing a feedback on a specific aspect of the paper.",
 )
+
+
+def create_reviewer_agent(
+    name: str = "ReviewerAgent",
+    prompt: str = PROMPT,
+    model: str = "gpt-4o-mini",
+) -> Agent:
+    return Agent(
+        name=name,
+        instructions=prompt,
+        model=model,
+        output_type=Review,
+        tools=[reviewer_assistant_tool],  # Provide the tool function here
+    )

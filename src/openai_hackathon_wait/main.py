@@ -59,28 +59,34 @@ async def main(paper_path: str, num_reviews: int):
         {"area": "structure and language", "review": structure_validator_result}
     ]
 
-    # --- Find Reviewers --- 
+    # --- Find Reviewers ---
     logger.info(f"Finding reviewers for paper: {paper_path}")
-    finder = ReviewerFinder(paper_path)
-    # Pass client if needed by ReviewerFinder internally, assuming it initializes its own for now
+    # Pass the initialized client to ReviewerFinder
+    finder = ReviewerFinder(paper_path, client=client)
     selected_reviewers = await finder.find_reviewers()
 
     if not selected_reviewers:
         logger.error("Could not find reviewers. Exiting.")
         sys.exit(1)
 
-    logger.info(f"Found {len(selected_reviewers)} reviewers: {list(selected_reviewers.keys())}")
+    logger.info(
+        f"Found {len(selected_reviewers)} reviewers: {list(selected_reviewers.keys())}"
+    )
     # Save the selected reviewers (optional, finder might already do it)
-    finder.save_reviewers(selected_reviewers) 
+    finder.save_reviewers(selected_reviewers)
     # --- End Find Reviewers ---
 
     # Run the review for each selected reviewer
     review_jobs = []
     # The num_reviews argument is now less relevant, we run one review per selected reviewer
-    logger.info(f"Starting review process with {len(selected_reviewers)} selected reviewers...")
+    logger.info(
+        f"Starting review process with {len(selected_reviewers)} selected reviewers..."
+    )
     for reviewer_name, system_prompt in selected_reviewers.items():
         logger.info(f"Initializing review orchestrator for: {reviewer_name}")
-        orchestrator = ReviewOrchestrator(reviewer_name=reviewer_name, system_prompt=system_prompt)
+        orchestrator = ReviewOrchestrator(
+            reviewer_name=reviewer_name, system_prompt=system_prompt
+        )
         review_jobs.append(
             orchestrator.review_paper(paper, additional_analysis, paper_context)
         )
@@ -135,5 +141,5 @@ if __name__ == "__main__":
         sys.exit(1)
 
     paper_path = sys.argv[1]
-    num_reviews = int(sys.argv[2]) # Not directly used, but kept for consistency 
+    num_reviews = int(sys.argv[2])  # Not directly used, but kept for consistency
     asyncio.run(main(paper_path, num_reviews))

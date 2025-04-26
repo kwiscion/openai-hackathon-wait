@@ -427,97 +427,12 @@ const Index = () => {
     localStorage.removeItem('results');
   };
 
-  // Add a debug component
-  const DebugInfo = ({ taskStatus }: { taskStatus: TaskStatus | null }) => {
-    const [showDebug, setShowDebug] = useState(false);
-    
-    // Only show in development
-    if (import.meta.env.MODE !== 'development') return null;
-    
-    return (
-      <div className="mt-4 border-t pt-4">
-        <button 
-          onClick={() => setShowDebug(!showDebug)}
-          className="text-xs text-gray-500 underline"
-        >
-          {showDebug ? 'Hide' : 'Show'} Debug Info
-        </button>
-        
-        {showDebug && (
-          <div className="mt-2 p-2 bg-gray-100 rounded text-xs font-mono overflow-auto">
-            <div>
-              <strong>localStorage:</strong>
-              <pre>{JSON.stringify({
-                reviewState: localStorage.getItem('reviewState'),
-                currentTaskId: localStorage.getItem('currentTaskId'),
-                hasResults: !!localStorage.getItem('results')
-              }, null, 2)}</pre>
-            </div>
-            <div className="mt-2">
-              <strong>Task Status:</strong>
-              <pre>{JSON.stringify(taskStatus, null, 2)}</pre>
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  // Log ProcessingState rendering for debugging
-  useEffect(() => {
-    if (reviewState === "processing" && taskStatus) {
-      console.log(`ProcessingState key: process-history-${taskStatus.history?.length || 0}-${Date.now()}`);
-    }
-  }, [reviewState, taskStatus]);
-
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="container mx-auto px-4 py-8">
         <h1 className="text-4xl font-bold text-center mb-8">
           Paper Review System
         </h1>
-        
-        {import.meta.env.MODE === 'development' && (
-          <div className="max-w-3xl mx-auto mb-4 p-2 bg-blue-50 border border-blue-200 rounded text-xs">
-            <p className="font-medium text-blue-800">
-              Current State: {reviewState} | 
-              Task ID: {taskStatus?.task_id} | 
-              Current Step: {taskStatus?.current_step} |
-              Status: {taskStatus?.status} |
-              Time: {new Date().toLocaleTimeString()}
-            </p>
-            <div className="flex gap-4 mt-1">
-              <button 
-                onClick={() => {
-                  localStorage.clear();
-                  window.location.reload();
-                }}
-                className="text-red-500 underline"
-              >
-                Reset App
-              </button>
-              <button 
-                onClick={async () => {
-                  try {
-                    const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/reset`);
-                    if (response.ok) {
-                      localStorage.clear();
-                      alert('Database reset successful');
-                      window.location.reload();
-                    } else {
-                      alert('Failed to reset database');
-                    }
-                  } catch (error) {
-                    alert(`Error: ${error}`);
-                  }
-                }}
-                className="text-red-500 underline"
-              >
-                Reset DB
-              </button>
-            </div>
-          </div>
-        )}
         
         <div className="max-w-3xl mx-auto bg-white rounded-lg shadow-md p-8">
           {reviewState === "upload" && (
@@ -539,8 +454,6 @@ const Index = () => {
               onGoBack={handleGoBack}
             />
           )}
-          
-          <DebugInfo taskStatus={taskStatus} />
         </div>
       </div>
     </div>

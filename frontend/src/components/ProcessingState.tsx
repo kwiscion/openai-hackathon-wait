@@ -22,11 +22,6 @@ const stepTitles: Record<string, string> = {
 };
 
 export const ProcessingState = ({ history = [] }: ProcessingStateProps) => {
-  console.log("ProcessingState rendering with history length:", history.length);
-  if (history.length > 0) {
-    console.log("Latest history item:", history[history.length - 1]);
-  }
-  
   // Force re-render counter
   const [, setForceUpdate] = useState(0);
   
@@ -34,7 +29,6 @@ export const ProcessingState = ({ history = [] }: ProcessingStateProps) => {
   useEffect(() => {
     const interval = setInterval(() => {
       setForceUpdate(prev => prev + 1);
-      console.log("Forced update in ProcessingState, history length:", history.length);
     }, 2000);
     
     return () => clearInterval(interval);
@@ -63,15 +57,6 @@ export const ProcessingState = ({ history = [] }: ProcessingStateProps) => {
     <div className="flex flex-col items-center gap-6 py-8 w-full max-w-lg mx-auto">
       <Loader className="w-12 h-12 animate-spin text-primary" />
       <h2 className="text-xl font-medium">Analyzing your paper...</h2>
-      
-      {/* Debug info */}
-      {sortedHistory.length > 0 && (
-        <div className="w-full text-xs text-gray-500 p-2 bg-gray-50 rounded">
-          Current time: {new Date().toLocaleTimeString()} | 
-          History items: {sortedHistory.length} | 
-          Latest step: {sortedHistory[sortedHistory.length - 1]?.step || 'none'}
-        </div>
-      )}
       
       {/* Show progress log */}
       <div className="w-full mt-4 space-y-4">

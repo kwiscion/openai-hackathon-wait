@@ -25,9 +25,9 @@ class RAG:
     async def add_text(self, text: str):
         async with TemporaryDirectory() as temp_dir:
             temp_file_path = os.path.join(temp_dir, "temp.txt")
-            with open(temp_file_path, "w", encoding="utf-8") as f:
+            with open(temp_file_path, "w") as f:
                 f.write(text)
-            with open(temp_file_path, "rb", encoding="utf-8") as file_content:
+            with open(temp_file_path, "rb") as file_content:
                 result = await self.client.files.create(
                     file=file_content,
                     purpose="assistants",

@@ -19,6 +19,7 @@ from .agents.reviewer_finder import (
     create_reviewer_proposer_agent,
     create_reviewer_selector_agent,
 )
+from .create_context import create_context
 from .publication_decision import PublicationDecisionOrchestrator
 from .review_synthesizer import create_synthesizer_agent
 
@@ -49,16 +50,16 @@ async def main(paper_path: str, num_reviews: int):
     paper_id = "paper_" + paper_path.split("/")[-1].split(".")[0][:50]
 
     # Create the context
-    # rag, paper_context = await create_context(client, paper_id, paper_content)
+    paper_context = await create_context(client, paper_id, paper_content)
 
-    # # Run the structure validator
-    # structure_validator_result = await run_validator(
-    #     paper_content=paper_content, auto_detect=True, grammar_check=True
-    # )
+    # Run the structure validator
+    structure_validator_result = await run_validator(
+        paper_content=paper_content, auto_detect=True, grammar_check=True
+    )
 
-    # additional_analysis = [
-    #     {"area": "structure and language", "review": structure_validator_result}
-    # ]
+    additional_analysis = [
+        {"area": "structure and language", "review": structure_validator_result}
+    ]
 
     # --- Find Reviewers using direct agent calls ---
     selected_reviewers_dict: Dict[str, str] | None = None

@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 from marker.converters.pdf import PdfConverter
 from marker.models import create_model_dict
@@ -26,15 +27,14 @@ def convert(path: str):
     converter = PdfConverter(
         artifact_dict=create_model_dict(),
     )
-    rendered = converter("2405.17640v2.pdf")
+    rendered = converter(path)
     text, _, images = text_from_rendered(rendered)
 
-
-    dirname = path.split("/")[-1].split(".")[0]
-    os.makedirs(dirname, exist_ok=True)
+    dirname = Path(path).stem
+    os.makedirs(f"{Path(path).parent}/{dirname}", exist_ok=True)
     for i, image in enumerate(images):
-        images[image].save(f"{dirname}/{image}")
+        images[image].save(f"{Path(path).parent}/{dirname}/{image}")
 
 
-    with open(f"{dirname}/{dirname}.md", "w", encoding='utf-8') as f:
+    with open(f"{Path(path).parent}/{dirname}/{dirname}.md", "w", encoding='utf-8') as f:
         f.write(text)

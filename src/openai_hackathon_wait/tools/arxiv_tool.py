@@ -1,5 +1,5 @@
 from typing import Any, Optional, TypedDict
-from Agents import function_tool, RunContextWrapper
+from agents import function_tool, RunContextWrapper
 from loguru import logger
 
 from openai_hackathon_wait.api.arxiv_articles import ArxivAPI

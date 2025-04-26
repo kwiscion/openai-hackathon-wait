@@ -1,8 +1,8 @@
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Download, FileText } from "lucide-react";
+import { ArrowLeft, Download, FileText } from "lucide-react";
 
 interface Section {
   title: string;
@@ -14,12 +14,14 @@ interface ResultsDisplayProps {
   feedback: string;
   sections?: Section[];
   title?: string;
+  onGoBack?: () => void;
 }
 
 export const ResultsDisplay = ({ 
   feedback, 
   sections = [], 
-  title = "Review Results" 
+  title = "Review Results",
+  onGoBack
 }: ResultsDisplayProps) => {
   const handleExport = () => {
     const element = document.createElement("a");
@@ -83,6 +85,14 @@ export const ResultsDisplay = ({
           )}
         </Tabs>
       </CardContent>
+      {onGoBack && (
+        <CardFooter className="pt-4 pb-6 flex justify-center">
+          <Button onClick={onGoBack} className="w-full max-w-xs">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Upload New PDF
+          </Button>
+        </CardFooter>
+      )}
     </Card>
   );
 };

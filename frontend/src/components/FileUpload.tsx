@@ -4,7 +4,7 @@ import { FileText, Upload } from "lucide-react";
 import { useRef, useState } from "react";
 
 interface FileUploadProps {
-  onFileAccepted: (response: any) => void;
+  onFileAccepted: (file: File) => void;
 }
 
 export const FileUpload = ({ onFileAccepted }: FileUploadProps) => {
@@ -52,10 +52,12 @@ export const FileUpload = ({ onFileAccepted }: FileUploadProps) => {
 
     try {
       setIsUploading(true);
-      // We'll just pass the file to the parent component now
-      // The actual upload will happen in the Index component
+      console.log("FileUpload: Processing file", file.name);
+      // Pass the file to the parent component
       onFileAccepted(file);
+      // Note: We don't reset isUploading here as the parent component will handle the state transition
     } catch (error) {
+      console.error("FileUpload: Error processing file", error);
       toast({
         variant: "destructive",
         title: "Upload failed",
@@ -75,31 +77,47 @@ export const FileUpload = ({ onFileAccepted }: FileUploadProps) => {
       }`}
     >
       <div className="flex flex-col items-center gap-4">
-        <FileText className="w-16 h-16 text-gray-400" />
-        <div className="text-xl font-medium">
-          Drag and drop your PDF here
-        </div>
-        <p className="text-sm text-gray-500">
-          or
-        </p>
-        <div>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".pdf"
-            onChange={handleFileInput}
-            className="hidden"
-            id="file-upload"
-            disabled={isUploading}
-          />
-          <Button 
-            onClick={handleButtonClick}
-            disabled={isUploading}
-          >
-            <Upload className="mr-2" />
-            {isUploading ? "Uploading..." : "Select PDF"}
-          </Button>
-        </div>
+        {isUploading ? (
+          <>
+            <div className="animate-pulse">
+              <FileText className="w-16 h-16 text-primary" />
+            </div>
+            <div className="text-xl font-medium text-primary">
+              Uploading your PDF...
+            </div>
+            <p className="text-sm text-gray-500">
+              Please wait while we process your file
+            </p>
+          </>
+        ) : (
+          <>
+            <FileText className="w-16 h-16 text-gray-400" />
+            <div className="text-xl font-medium">
+              Drag and drop your PDF here
+            </div>
+            <p className="text-sm text-gray-500">
+              or
+            </p>
+            <div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".pdf"
+                onChange={handleFileInput}
+                className="hidden"
+                id="file-upload"
+                disabled={isUploading}
+              />
+              <Button 
+                onClick={handleButtonClick}
+                disabled={isUploading}
+              >
+                <Upload className="mr-2" />
+                Select PDF
+              </Button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

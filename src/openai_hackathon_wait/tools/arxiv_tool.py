@@ -4,11 +4,15 @@ from agents import function_tool, RunContextWrapper
 from loguru import logger
 
 from openai_hackathon_wait.api.arxiv_articles import ArxivAPI
-from openai_hackathon_wait.api.utils.get_article_keywords import get_expanded_keywords, get_article_keywords
+from openai_hackathon_wait.api.utils.get_article_keywords import (
+    get_expanded_keywords,
+    get_article_keywords,
+)
 
 
 class ArxivSearchArgs(TypedDict):
     """Arguments for the arXiv search function."""
+
     article_text: str
     max_results: int
     sort_by: str
@@ -30,7 +34,7 @@ async def arxiv_search(
 ) -> list[str]:
     """
     Searches the arXiv database for scientific papers based on keywords extracted from the article text.
-    
+
     This tool analyzes the article text to extract relevant search terms, expands them with related concepts,
     and queries arXiv.org to find academic papers matching these terms. Results include metadata such as
     title, authors, abstract, and URLs to access the papers.
@@ -39,7 +43,7 @@ async def arxiv_search(
         article_text: The text or query to find relevant scientific papers for
         max_results: Number of results to return (default: 25, max:30)
         sort_by: How to sort results - options: 'relevance', 'lastUpdatedDate', 'submittedDate'
-    
+
     Returns:
         Dictionary containing:
         - 'papers': List of paper metadata dictionaries with URLs to abstracts and PDFs
@@ -49,12 +53,12 @@ async def arxiv_search(
     if not article_text or not article_text.strip():
         return {
             "papers": [],
-            "error": "Empty article text provided. Please provide some content to search for."
+            "error": "Empty article text provided. Please provide some content to search for.",
         }
-    
+
     max_results = 25 if max_results is None else max_results
     sort_by = "relevance" if sort_by is None else sort_by
-    
+
     max_results = min(max(1, max_results), 30)
 
     logger.info(f"Max results: {max_results}")
@@ -70,25 +74,27 @@ async def arxiv_search(
     )
 
     try:
-        logger.info(f"Starting arXiv search for: {article_text[:100]}{'...' if len(article_text) > 100 else ''}")
-        
+        logger.info(
+            f"Starting arXiv search for: {article_text[:100]}{'...' if len(article_text) > 100 else ''}"
+        )
+
         article_keywords = await get_article_keywords(article_text)
         logger.info(f"Extracted keywords: {article_keywords}")
-        
+
         expanded_keywords = await get_expanded_keywords(article_keywords)
         logger.info(f"Expanded keywords: {expanded_keywords}")
-        
+
         papers_urls = await arxiv_api.search_articles(expanded_keywords)
-        
+
         logger.info(f"Found {len(papers_urls)} papers urls on arXiv matching the query")
 
         logger.info(f"Papers: {papers_urls}")
-        
+
         if not papers_urls:
             return []
-                
+
         return papers_urls
-        
+
     except Exception as e:
         logger.error(f"Error in arXiv search: {str(e)}")
         return []

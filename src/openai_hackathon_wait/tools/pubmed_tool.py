@@ -1,5 +1,5 @@
 from openai_hackathon_wait.api.pubmed import PubMedAgentTool
-from Agents import function_tool
+from agents import function_tool
 from loguru import logger
 
 pubmed_interface = PubMedAgentTool()

@@ -56,7 +56,6 @@ class PublicationDecisionContext(BaseModel):
     manuscript: str
     literature_context: Optional[str] = None
     technical_analysis: Optional[str] = None
-    manuscript_filename: str  # Added to generate default output filename
 
 
 # --- Dynamic Instructions ---
@@ -165,7 +164,6 @@ def create_publication_decision_agent(
 async def run_publication_decision_agent(
     synthesized_review: SynthesizedReview,
     manuscript: str,
-    manuscript_filename: str,
     literature_context: Optional[str] = None,
     technical_analysis: Optional[str] = None,
     model: str = "gpt-4o-mini",
@@ -177,7 +175,6 @@ async def run_publication_decision_agent(
             manuscript=manuscript,
             literature_context=literature_context,
             technical_analysis=technical_analysis,
-            manuscript_filename=manuscript_filename,
         )
         decision = await Runner.run(
             decision_agent, "Decide if paper is ready for publication", context=context
@@ -297,7 +294,6 @@ async def main():
         manuscript=manuscript,
         literature_context=literature_context,
         technical_analysis=technical_analysis,
-        manuscript_filename=args.manuscript,  # Pass filename for saving
     )
 
     # Create the agent
@@ -314,7 +310,7 @@ async def main():
         decision: PublicationDecision = result.final_output
 
         # Save the decision
-        save_decision(decision, context.manuscript_filename, args.output)
+        save_decision(decision, args.manuscript, args.output)
 
         # Print summary to console
         logger.info("=== PUBLICATION DECISION ===")

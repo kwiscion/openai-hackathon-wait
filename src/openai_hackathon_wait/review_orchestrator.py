@@ -1,5 +1,6 @@
 import asyncio
 import sys
+from typing import List
 
 import dotenv
 from agents import trace
@@ -11,7 +12,7 @@ from openai_hackathon_wait.agents.publication_decision import (
     run_publication_decision_agent,
 )
 from openai_hackathon_wait.agents.review_synthesizer import run_synthesizer_agent
-from openai_hackathon_wait.agents.reviewer import run_reviewer_agent
+from openai_hackathon_wait.agents.reviewer import Review, run_reviewer_agent
 from openai_hackathon_wait.agents.reviewer_finder import run_reviewer_finder_agent
 from openai_hackathon_wait.agents.structure_validator import run_validator_agent
 
@@ -22,7 +23,7 @@ dotenv.load_dotenv()
 
 async def review_orchestrator(
     paper_content: str, paper_id: str = "abc"
-) -> PublicationDecision:
+) -> tuple[PublicationDecision, List[Review]]:
     """
     Main method to run the review orchestrator.
 
@@ -86,4 +87,4 @@ async def review_orchestrator(
             model="o3",
         )
 
-        return decision
+        return decision, reviews

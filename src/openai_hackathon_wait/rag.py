@@ -1,3 +1,6 @@
+import os
+
+from anyio import TemporaryDirectory
 from openai import AsyncOpenAI
 
 
@@ -18,6 +21,21 @@ class RAG:
         await self.client.vector_stores.files.upload_and_poll(
             vector_store_id=self.vector_store.id, file=open(file_path, "rb")
         )
+
+    async def add_text(self, text: str):
+        async with TemporaryDirectory() as temp_dir:
+            temp_file_path = os.path.join(temp_dir, "temp.txt")
+            with open(temp_file_path, "w") as f:
+                f.write(text)
+            with open(temp_file_path, "rb") as file_content:
+                result = await self.client.files.create(
+                    file=file_content,
+                    purpose="assistants",
+                )
+                file_id = result.id
+            await self.client.vector_stores.files.create(
+                vector_store_id=self.vector_store.id, file_id=file_id
+            )
 
     async def delete_vector_store(self):
         await self.client.vector_stores.delete(self.vector_store.id)

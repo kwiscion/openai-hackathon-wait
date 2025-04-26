@@ -1,7 +1,6 @@
 import os
 from firecrawl import FirecrawlApp
 
-
 from pydantic import BaseModel
 
 from dotenv import load_dotenv
@@ -26,7 +25,7 @@ def on_activity(activity):
     print(f"[{activity['type']}] {activity['message']}")
 
 
-def web_search(query: str, max_depth: int = 5, max_urls: int = 15) -> DeepResearchResult:
+def perform_deep_research(query: str, max_depth: int = 5, max_urls: int = 15) -> DeepResearchResult:
     results = firecrawl.deep_research(
         query=query,
         max_depth=max_depth,

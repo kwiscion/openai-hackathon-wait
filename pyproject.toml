@@ -25,6 +25,7 @@ dependencies = [
     "firecrawl>=2.3.0",
     "bio>=1.7.1",
     "xmltodict>=0.14.2",
+    "anyio>=4.9.0",
 ]
 
 [project.scripts]

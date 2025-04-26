@@ -972,6 +972,7 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "aiohttp" },
+    { name = "anyio" },
     { name = "arxiv" },
     { name = "bio" },
     { name = "dotenv" },
@@ -996,6 +997,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "aiohttp", specifier = ">=3.11.18" },
+    { name = "anyio", specifier = ">=4.9.0" },
     { name = "arxiv", specifier = ">=2.2.0" },
     { name = "bio", specifier = ">=1.7.1" },
     { name = "dotenv", specifier = ">=0.9.9" },

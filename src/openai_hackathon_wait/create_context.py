@@ -2,10 +2,12 @@ import os
 import tempfile
 
 import httpx
+from anyio import TemporaryDirectory
 from agents import Agent, Runner, AsyncOpenAI
 from loguru import logger
 from pydantic import BaseModel
 
+from openai_hackathon_wait.api.deep_research import perform_deep_research
 from openai_hackathon_wait.tools.arxiv_tool import arxiv_search
 from openai_hackathon_wait.tools.pubmed_tool import pubmed_tool
 from openai_hackathon_wait.rag import RAG
@@ -17,7 +19,7 @@ class ArxivSearchResult(BaseModel):
 
 arxiv_agent = Agent(
     name="Arxiv agent",
-    instructions="You provide information about the papers that are related to the query. Return between 15 and 25 results by default.",
+    instructions="You provide information about the papers that are related to the query. Return between 2 and 5 results by default.",
     tools=[arxiv_search],
     model="gpt-4o-mini",
     output_type=ArxivSearchResult,
@@ -25,7 +27,7 @@ arxiv_agent = Agent(
 
 pubmed_agent = Agent(
     name="Pubmed agent",
-    instructions="You provide information about the papers that are related to the query. Return between 15 and 25 results by default.",
+    instructions="You provide information about the papers that are related to the query. Return between 10 and 20 results by default.",
     tools=[pubmed_tool],
     model="gpt-4o-mini",
     output_type=list[str],
@@ -50,13 +52,19 @@ async def create_context(
     )
     article_urls = result.final_output
 
+    deep_research_result = perform_deep_research(article_text)
+
+    deep_research_text = deep_research_result.final_analysis
+
     rag = RAG(vector_store_name)
     await rag.create_vector_store()
 
     article_urls = article_urls.articles_urls
 
+    await rag.add_text(deep_research_text)
+
     # Use a temporary directory that will be automatically cleaned up
-    with tempfile.TemporaryDirectory() as temp_dir:
+    async with TemporaryDirectory() as temp_dir:
         for article_url in article_urls:
             async with httpx.AsyncClient() as client:
                 logger.info(f"Downloading {article_url}")

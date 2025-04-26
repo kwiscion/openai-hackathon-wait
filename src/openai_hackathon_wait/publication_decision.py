@@ -4,11 +4,10 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from agents import Agent, Runner
 from dotenv import load_dotenv
 from loguru import logger
 from pydantic import BaseModel, Field
-
-from agents import Agent, Runner
 
 # Load environment variables
 load_dotenv()

@@ -4,12 +4,12 @@ from enum import Enum
 from pathlib import Path
 from typing import List, Optional
 
+from agents import Agent, Runner
 from dotenv import load_dotenv
 from loguru import logger
 from openai import OpenAI
 from pydantic import BaseModel, Field
 
-from agents import Agent, Runner
 from openai_hackathon_wait.agents.reviewer import Review
 
 # Load environment variables (including OPENAI_API_KEY)

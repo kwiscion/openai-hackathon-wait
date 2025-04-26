@@ -23,6 +23,9 @@ dependencies = [
     "pdf2image>=1.17.0",
     "pymupdf4llm>=0.0.21",
     "firecrawl>=2.3.0",
+    "bio>=1.7.1",
+    "xmltodict>=0.14.2",
+    "anyio>=4.9.0",
 ]
 
 [project.scripts]

@@ -1,7 +1,7 @@
 import asyncio
 from typing import Any, Dict, List
 
-from agents import Runner
+from agents import Agent, Runner
 from loguru import logger
 from pydantic import BaseModel
 
@@ -23,8 +23,24 @@ ANALYSIS_AREAS = [
 
 
 class ReviewOrchestrator:
-    def __init__(self):
-        self.reviewer_agent = reviewer_agent
+    def __init__(self, reviewer_name: str = "GeneralReviewer", system_prompt: str = ""):
+        # If a custom system prompt is provided, create a new Agent instance
+        if system_prompt:
+            self.reviewer_name = reviewer_name
+            self.reviewer_agent = Agent(
+                name=f"{reviewer_name}ReviewerAgent", # Use the name
+                instructions=system_prompt, # Use the custom prompt
+                output_type=Review, # Keep the original output type
+                model=reviewer_agent.model, # Keep the original model
+            )
+            logger.info(f"Initialized orchestrator for reviewer: {reviewer_name}")
+        else:
+            # Otherwise, use the default reviewer agent
+            self.reviewer_name = "GeneralReviewer"
+            self.reviewer_agent = reviewer_agent
+            logger.info("Initialized orchestrator with default reviewer.")
+            
+        # Assistant agent remains the same
         self.reviewer_assistant_agent = reviewer_assistant_agent
 
     async def get_assistant_reviews(
@@ -73,7 +89,7 @@ class ReviewOrchestrator:
         """
         Get the main review from the reviewer agent, incorporating feedback from assistant reviews.
         """
-        logger.info("Getting main review from reviewer agent...")
+        logger.info(f"Getting main review from reviewer agent: {self.reviewer_name}...")
 
         # Format assistant reviews for the prompt
         assistant_feedback = "\n\n".join(
@@ -165,6 +181,7 @@ class ReviewOrchestrator:
         return FullReview(
             assistant_feedback=assistant_reviews,
             review=main_review,
+            # Add reviewer name to the output if needed, for now just logging
         )
 
 

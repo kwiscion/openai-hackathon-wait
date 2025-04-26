@@ -9,6 +9,8 @@ from openai import AsyncOpenAI
 from openai_hackathon_wait.agents.structure_validator import run_validator
 from openai_hackathon_wait.create_context import create_context
 
+# Import ReviewerFinder
+from .agents.reviewer_finder import ReviewerFinder
 from .publication_decision import PublicationDecisionOrchestrator
 from .review_orchestrator import ReviewOrchestrator
 from .review_synthesizer import ReviewSynthesizer
@@ -57,10 +59,28 @@ async def main(paper_path: str, num_reviews: int):
         {"area": "structure and language", "review": structure_validator_result}
     ]
 
-    # Run the review
+    # --- Find Reviewers --- 
+    logger.info(f"Finding reviewers for paper: {paper_path}")
+    finder = ReviewerFinder(paper_path)
+    # Pass client if needed by ReviewerFinder internally, assuming it initializes its own for now
+    selected_reviewers = await finder.find_reviewers()
+
+    if not selected_reviewers:
+        logger.error("Could not find reviewers. Exiting.")
+        sys.exit(1)
+
+    logger.info(f"Found {len(selected_reviewers)} reviewers: {list(selected_reviewers.keys())}")
+    # Save the selected reviewers (optional, finder might already do it)
+    finder.save_reviewers(selected_reviewers) 
+    # --- End Find Reviewers ---
+
+    # Run the review for each selected reviewer
     review_jobs = []
-    for _ in range(num_reviews):
-        orchestrator = ReviewOrchestrator()
+    # The num_reviews argument is now less relevant, we run one review per selected reviewer
+    logger.info(f"Starting review process with {len(selected_reviewers)} selected reviewers...")
+    for reviewer_name, system_prompt in selected_reviewers.items():
+        logger.info(f"Initializing review orchestrator for: {reviewer_name}")
+        orchestrator = ReviewOrchestrator(reviewer_name=reviewer_name, system_prompt=system_prompt)
         review_jobs.append(
             orchestrator.review_paper(paper, additional_analysis, paper_context)
         )
@@ -107,12 +127,13 @@ async def main(paper_path: str, num_reviews: int):
 
 
 if __name__ == "__main__":
+    # Keep num_reviews for now, although it's not directly used to set the number of reviewers
     if len(sys.argv) < 3:
         print(
-            "Usage: python -m openai_hackathon_wait.review_orchestrator <paper_path> <num_reviews>"
+            "Usage: python -m openai_hackathon_wait.main <paper_path> <num_reviews (Note: actual number depends on reviewer selection)>"
         )
         sys.exit(1)
 
     paper_path = sys.argv[1]
-    num_reviews = int(sys.argv[2])
+    num_reviews = int(sys.argv[2]) # Not directly used, but kept for consistency 
     asyncio.run(main(paper_path, num_reviews))

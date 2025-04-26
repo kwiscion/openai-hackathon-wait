@@ -42,7 +42,7 @@ async def main(paper_path: str):
     paper_id = "paper_" + paper_path.split("/")[-1].split(".")[0][:50]
 
     # Run the review orchestrator
-    decision = await review_orchestrator(paper_content, paper_id)
+    decision, reviews = await review_orchestrator(paper_content, paper_id)
 
     # Save the decision
     decision_output_path = paper_path.replace(".md", "_decision.json")
@@ -52,6 +52,17 @@ async def main(paper_path: str):
         logger.info(f"Decision saved to {decision_output_path}")
     except Exception as e:
         logger.error(f"Error saving decision to {decision_output_path}: {e}")
+
+    # Save the reviews
+    reviews_output_path = paper_path.replace(".md", "_reviews.json")
+    try:
+        with open(reviews_output_path, "w", encoding="utf-8") as f:
+            json.dump([review.model_dump() for review in reviews], f, indent=4)
+        logger.info(f"Reviews saved to {reviews_output_path}")
+    except Exception as e:
+        logger.error(f"Error saving reviews to {reviews_output_path}: {e}")
+
+    return decision, reviews
 
 
 if __name__ == "__main__":

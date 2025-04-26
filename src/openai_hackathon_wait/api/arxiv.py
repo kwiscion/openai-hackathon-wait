@@ -3,7 +3,7 @@
 import logging
 from typing import Any, Dict, List, Optional
 
-from agents import function_tool
+from Agents import function_tool
 from pydantic import BaseModel, model_validator
 
 logger = logging.getLogger(__name__)

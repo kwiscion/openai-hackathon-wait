@@ -1,6 +1,6 @@
 from enum import Enum
 
-from agents import Agent
+from Agents import Agent
 from pydantic import BaseModel, Field
 
 from .reviewer_assistant import reviewer_assistant_agent

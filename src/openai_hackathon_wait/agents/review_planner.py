@@ -1,6 +1,6 @@
 from typing import List
 
-from agents import Agent
+from Agents import Agent
 from pydantic import BaseModel, Field
 
 PROMPT = (

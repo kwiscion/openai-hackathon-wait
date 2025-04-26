@@ -6,7 +6,7 @@ import tempfile
 from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, model_validator
-from agents import function_tool
+from Agents import function_tool
 
 
 logger = logging.getLogger(__name__)

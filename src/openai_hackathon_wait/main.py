@@ -8,6 +8,7 @@ import dotenv
 from loguru import logger
 
 from openai_hackathon_wait.review_orchestrator import review_orchestrator
+from openai_hackathon_wait.utils.markdown_converter import convert
 
 # Import agent creation functions and models directly
 
@@ -22,6 +23,10 @@ async def main(paper_path: str):
         paper_path: Path to the paper file
         num_reviews: Target number of reviews (currently unused as reviewer count is determined by selection)
     """
+    if paper_path.endswith(".pdf"):
+        convert(paper_path, force=False)
+        paper_path = paper_path.replace(".pdf", "/manuscript.md")
+
     # Read the paper
     try:
         with open(paper_path, "r", encoding="utf-8") as f:

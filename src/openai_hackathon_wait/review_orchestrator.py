@@ -1,10 +1,9 @@
 import asyncio
 from typing import Any, Dict, List
 
+from agents import Runner
 from loguru import logger
 from pydantic import BaseModel
-
-from agents import Runner
 
 from .agents.review_planner import review_planner_agent
 from .agents.reviewer import Review, reviewer_agent
@@ -105,9 +104,15 @@ class ReviewOrchestrator:
         areas = result.final_output.areas
         return areas + ANALYSIS_AREAS
 
-    async def review_paper(self, paper: str) -> FullReview:
+    async def review_paper(
+        self, paper: str, additional_analysis: List[Dict[str, Any]] = []
+    ) -> FullReview:
         """
         Review a paper using multiple agents in parallel and then get a main review.
+
+        Args:
+            paper: The paper to review
+            additional_analysis: Additional analysis done by other agents
         """
         # Get the analysis areas
         analysis_areas = await self.get_analysis_areas(paper)
@@ -115,6 +120,12 @@ class ReviewOrchestrator:
 
         # Get reviews from assistant agents
         assistant_reviews = await self.get_assistant_reviews(paper, analysis_areas)
+
+        # Add additional analysis to the assistant reviews
+        for analysis in additional_analysis:
+            assistant_reviews.append(
+                {"area": analysis["area"], "review": analysis["review"]}
+            )
 
         # Get the main review
         main_review = await self.get_main_review(paper, assistant_reviews)

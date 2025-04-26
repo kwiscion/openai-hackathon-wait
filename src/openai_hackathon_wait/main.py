@@ -42,11 +42,15 @@ async def main(paper_path: str, num_reviews: int):
         f"Structure validator result saved to {paper_path.replace('.md', '_structure_validator.json')}"
     )
 
+    additional_analysis = [
+        {"area": "structure and language", "review": structure_validator_result}
+    ]
+
     # Run the review
     review_jobs = []
     for _ in range(num_reviews):
         orchestrator = ReviewOrchestrator()
-        review_jobs.append(orchestrator.review_paper(paper))
+        review_jobs.append(orchestrator.review_paper(paper, additional_analysis))
 
     reviews = await asyncio.gather(*review_jobs)
 

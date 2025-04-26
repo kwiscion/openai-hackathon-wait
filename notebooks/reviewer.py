@@ -2,7 +2,7 @@ import asyncio
 import json
 import sys
 
-from agents import Runner, trace
+from Agents import Runner, trace
 from dotenv import load_dotenv
 from openai import OpenAI
 

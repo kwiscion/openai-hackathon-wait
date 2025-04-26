@@ -1,5 +1,5 @@
 import asyncio
-from agents.structure_validator.structure_validator import run_validator
+from openai_hackathon_wait.Agents.structure_validator import run_validator
 
 async def test_validator():
     # Example markdown content for testing

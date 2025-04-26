@@ -47,7 +47,6 @@ class ReviewerContext(BaseModel):
     technical_context: str = Field(
         description="A summary of the technical context of the paper."
     )
-    vector_store_name: str = Field(description="The name of the vector store to use.")
 
 
 reviewer_assistant_tool = reviewer_assistant_agent.as_tool(

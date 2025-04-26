@@ -14,7 +14,7 @@ from openai_hackathon_wait.agents.reviewer import (
     ReviewerContext,
     create_reviewer_agent,
 )
-from openai_hackathon_wait.agents.structure_validator import run_validator
+from openai_hackathon_wait.agents.structure_validator import run_validator_agent
 
 # Import agent creation functions and models directly
 from .agents.reviewer_finder import (
@@ -59,7 +59,7 @@ async def main(paper_path: str):
     # rag, paper_context = await create_context(client, paper_id, paper_content)
 
     # Run the structure validator
-    structure_validator_result = await run_validator(
+    structure_validator_result = await run_validator_agent(
         paper_content=paper_content, auto_detect=True, grammar_check=True
     )
 

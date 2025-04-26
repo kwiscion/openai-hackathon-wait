@@ -323,7 +323,7 @@ structure_validator_agent = Agent[PaperValidatorContext](
 )
 
 
-async def run_validator(
+async def run_validator_agent(
     paper_content=None,
     paper_path=None,
     paper_type=None,
@@ -367,7 +367,6 @@ async def run_validator(
 async def main():
     """Main function for running as a standalone script."""
 
-    markdown_path = "data/Bagdasarian et al (2024) Acute Effects of Hallucinogens on FC/Bagdasarian et al (2024) Acute Effects of Hallucinogens on FC.md"
     # Example using direct markdown content
     sample_markdown = """# Sample Paper
     
@@ -382,7 +381,7 @@ This is a sample methodology section.
 
 """
     # Run structure validation
-    output1 = await run_validator(
+    output1 = await run_validator_agent(
         paper_content=sample_markdown, auto_detect=True, grammar_check=True
     )
     print("\nStructure Validation Result:")

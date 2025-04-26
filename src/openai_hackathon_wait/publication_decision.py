@@ -4,7 +4,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from agents import Agent, Runner
+from agents import Agent, RunContextWrapper, Runner
 from dotenv import load_dotenv
 from loguru import logger
 from pydantic import BaseModel, Field
@@ -45,7 +45,30 @@ class PublicationDecision(BaseModel):
     )
 
 
-DECISION_PROMPT = """
+# --- Context Definition ---
+class PublicationDecisionContext(BaseModel):
+    """Context object for the Publication Decision Agent."""
+
+    synthesized_review: Dict[str, Any]
+    manuscript: str
+    literature_context: Optional[str] = None
+    technical_analysis: Optional[str] = None
+    manuscript_filename: str  # Added to generate default output filename
+
+
+# --- Dynamic Instructions ---
+def dynamic_instructions(
+    wrapper: RunContextWrapper[PublicationDecisionContext],
+    agent: Agent[PublicationDecisionContext],
+) -> str:
+    """
+    Generate dynamic instructions for the publication decision agent based on context.
+    """
+    ctx = wrapper.context
+    prompt_parts = []
+
+    prompt_parts.append(
+        """
 You are an academic journal editor making a final decision on manuscript submissions.
 
 Your task is to synthesize all available information about a manuscript and render a clear, fair, and justified publication decision.
@@ -83,197 +106,120 @@ DECISION STRUCTURE:
 
 Your decision should represent a careful synthesis of all input information, applying your best editorial judgment to determine the most appropriate outcome for this manuscript.
 """
+    )
+
+    # Add synthesized review
+    prompt_parts.append("## SYNTHESIZED REVIEW")
+    prompt_parts.append(json.dumps(ctx.synthesized_review, indent=2))
+    prompt_parts.append("")
+
+    # Add manuscript
+    prompt_parts.append("## MANUSCRIPT")
+    prompt_parts.append(ctx.manuscript)
+    prompt_parts.append("")
+
+    # Add literature context if available
+    prompt_parts.append("## LITERATURE CONTEXT")
+    if ctx.literature_context:
+        prompt_parts.append(ctx.literature_context)
+    else:
+        prompt_parts.append("No literature context provided.")
+    prompt_parts.append("")
+
+    # Add technical analysis if available
+    prompt_parts.append("## TECHNICAL ANALYSIS")
+    if ctx.technical_analysis:
+        prompt_parts.append(ctx.technical_analysis)
+    else:
+        prompt_parts.append("No technical analysis provided.")
+    prompt_parts.append("")
+
+    # Add final task instruction
+    prompt_parts.append("## TASK")
+    prompt_parts.append(
+        "Based on all the information above, please provide a final publication decision "
+        "structured according to the 'PublicationDecision' format, including a clear recommendation "
+        "(accept, minor revisions, major revisions, reject, or reject and resubmit) "
+        "and a detailed rationale for your decision."
+    )
+
+    return "".join(prompt_parts)
 
 
-# Create the agent definition
-publication_decision_agent = Agent(
-    name="PublicationDecisionAgent",
-    instructions=DECISION_PROMPT,
-    model="gpt-4o",
-    output_type=PublicationDecision,
-)
+# --- Agent Creation Function ---
+def create_publication_decision_agent(
+    model: str = "gpt-4o-mini",
+) -> Agent[PublicationDecisionContext]:
+    """Creates the publication decision agent."""
+    return Agent[PublicationDecisionContext](
+        name="PublicationDecisionAgent",
+        instructions=dynamic_instructions,
+        model=model,
+        output_type=PublicationDecision,
+    )
 
 
-class DecisionOrchestratorInput(BaseModel):
-    """Input structure for the Decision Orchestrator."""
+# --- Helper Functions --- (Moved from Orchestrator)
+def _load_json(file_path: str) -> Dict[str, Any]:
+    """Load JSON data from a file."""
+    try:
+        with open(file_path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception as e:
+        logger.error(f"Error loading JSON file {file_path}: {e}")
+        return {}
 
-    synthesized_review_path: str
-    manuscript_path: str
-    literature_context: Optional[str] = None
-    technical_analysis: Optional[str] = None
+
+def _load_text(file_path: str) -> str:
+    """Load text from a file."""
+    try:
+        with open(file_path, "r", encoding="utf-8") as f:
+            return f.read()
+    except Exception as e:
+        logger.error(f"Error loading text file {file_path}: {e}")
+        return ""
 
 
-class PublicationDecisionOrchestrator:
-    """
-    Orchestrates the publication decision process by combining synthesized reviews,
-    manuscript content, and optional contextual information.
-    """
+def save_decision(
+    decision: PublicationDecision,
+    manuscript_filename: str,
+    output_path: Optional[str] = None,
+):
+    """Save the publication decision to a JSON file."""
+    if output_path is None:
+        # Get manuscript filename without extension
+        manuscript_path = Path(manuscript_filename)
+        manuscript_name = manuscript_path.stem
 
-    def __init__(
-        self,
-        synthesized_review_path: str,
-        manuscript_path: str,
-        literature_context_path: Optional[str] = None,
-        technical_analysis_path: Optional[str] = None,
-    ):
-        """Initialize the publication decision orchestrator with paths to input files."""
-        self.synthesized_review_path = synthesized_review_path
-        self.manuscript_path = manuscript_path
-        self.literature_context_path = literature_context_path
-        self.technical_analysis_path = technical_analysis_path
+        # Create decisions directory if it doesn't exist
+        decisions_dir = Path("data/decisions")
+        decisions_dir.mkdir(parents=True, exist_ok=True)
 
-    def _load_json(self, file_path: str) -> Dict[str, Any]:
-        """Load JSON data from a file."""
-        try:
-            with open(file_path, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except Exception as e:
-            logger.error(f"Error loading JSON file {file_path}: {e}")
-            return {}
+        # Create output path
+        output_path = str(decisions_dir / f"{manuscript_name}_decision.json")
 
-    def _load_text(self, file_path: str) -> str:
-        """Load text from a file."""
-        try:
-            with open(file_path, "r", encoding="utf-8") as f:
-                return f.read()
-        except Exception as e:
-            logger.error(f"Error loading text file {file_path}: {e}")
-            return ""
-
-    def _prepare_decision_prompt(
-        self,
-        synthesized_review: Dict[str, Any],
-        manuscript: str,
-        literature_context: Optional[str] = None,
-        technical_analysis: Optional[str] = None,
-    ) -> str:
-        """
-        Prepare a comprehensive prompt for the decision agent.
-
-        Args:
-            synthesized_review: The synthesized review data
-            manuscript: The manuscript text
-            literature_context: Optional context from literature search
-            technical_analysis: Optional analysis of structure and language
-
-        Returns:
-            str: Formatted prompt for the decision agent
-        """
-        prompt_parts = []
-
-        # Add synthesized review
-        prompt_parts.append("## SYNTHESIZED REVIEW")
-        prompt_parts.append(json.dumps(synthesized_review, indent=2))
-        prompt_parts.append("")
-
-        # Add manuscript
-        prompt_parts.append("## MANUSCRIPT")
-        prompt_parts.append(manuscript)
-        prompt_parts.append("")
-
-        # Add literature context if available
-        if literature_context:
-            prompt_parts.append("## LITERATURE CONTEXT")
-            prompt_parts.append(literature_context)
-            prompt_parts.append("")
-        else:
-            prompt_parts.append("## LITERATURE CONTEXT")
-            prompt_parts.append("No literature context provided.")
-            prompt_parts.append("")
-
-        # Add technical analysis if available
-        if technical_analysis:
-            prompt_parts.append("## TECHNICAL ANALYSIS")
-            prompt_parts.append(technical_analysis)
-            prompt_parts.append("")
-        else:
-            prompt_parts.append("## TECHNICAL ANALYSIS")
-            prompt_parts.append("No technical analysis provided.")
-            prompt_parts.append("")
-
-        # Add instructions for the decision
-        prompt_parts.append("## TASK")
-        prompt_parts.append(
-            "Based on all the information above, please provide a final publication decision "
-            "including a clear recommendation (accept, minor revisions, major revisions, reject, "
-            "or reject and resubmit) and a detailed rationale for your decision."
-        )
-
-        return "\n".join(prompt_parts)
-
-    async def make_decision(self) -> Optional[PublicationDecision]:
-        """Process all inputs and generate a publication decision."""
-        logger.info("Starting publication decision process...")
-
-        # Load the synthesized review
-        synthesized_review = self._load_json(self.synthesized_review_path)
-        if not synthesized_review:
-            logger.error(
-                f"Could not load synthesized review from {self.synthesized_review_path}"
-            )
-            return None
-
-        # Load the manuscript
-        manuscript = self._load_text(self.manuscript_path)
-        if not manuscript:
-            logger.error(f"Could not load manuscript from {self.manuscript_path}")
-            return None
-
-        # Load optional context if provided
-        literature_context = None
-        if self.literature_context_path:
-            literature_context = self._load_text(self.literature_context_path)
-
-        technical_analysis = None
-        if self.technical_analysis_path:
-            technical_analysis = self._load_text(self.technical_analysis_path)
-
-        # Prepare the prompt with all available information
-        prompt = self._prepare_decision_prompt(
-            synthesized_review, manuscript, literature_context, technical_analysis
-        )
-
-        # Run the decision agent
-        logger.info("Running publication decision agent...")
-        result = await Runner.run(publication_decision_agent, prompt)
-
-        # Return the decision
-        return result.final_output
-
-    def save_decision(
-        self, decision: PublicationDecision, output_path: Optional[str] = None
-    ):
-        """Save the publication decision to a JSON file."""
-        if output_path is None:
-            # Get manuscript filename without extension
-            manuscript_path = Path(self.manuscript_path)
-            manuscript_name = manuscript_path.stem
-
-            # Create decisions directory if it doesn't exist
-            decisions_dir = Path("data/decisions")
-            decisions_dir.mkdir(parents=True, exist_ok=True)
-
-            # Create output path
-            output_path = str(decisions_dir / f"{manuscript_name}_decision.json")
-
-        try:
-            with open(output_path, "w", encoding="utf-8") as f:
-                json.dump(decision.model_dump(), f, indent=2)
-            logger.info(f"Decision saved to {output_path}")
-        except Exception as e:
-            logger.error(f"Error saving decision to {output_path}: {e}")
+    try:
+        with open(output_path, "w", encoding="utf-8") as f:
+            json.dump(decision.model_dump(), f, indent=2)
+        logger.info(f"Decision saved to {output_path}")
+    except Exception as e:
+        logger.error(f"Error saving decision to {output_path}: {e}")
 
 
 async def main():
-    """Main function to run the orchestrator from command line."""
+    """Main function to run the agent from command line."""
     import argparse
 
     # Parse command line arguments
     parser = argparse.ArgumentParser(
         description="Generate publication decision based on synthesized reviews"
     )
-    parser.add_argument("--review", help="Path to the synthesized review JSON file")
-    parser.add_argument("--manuscript", help="Path to the manuscript markdown file")
+    parser.add_argument(
+        "--review", required=True, help="Path to the synthesized review JSON file"
+    )
+    parser.add_argument(
+        "--manuscript", required=True, help="Path to the manuscript markdown file"
+    )
     parser.add_argument(
         "--literature", help="Path to literature context file (optional)"
     )
@@ -284,30 +230,71 @@ async def main():
         "--output",
         help="Path for output decision JSON file (optional, defaults to data/decisions/MANUSCRIPT_NAME_decision.json)",
     )
+    parser.add_argument(
+        "--model",
+        default="gpt-4o",
+        help="Model name to use (e.g., gpt-4o, gpt-4o-mini)",
+    )
 
     args = parser.parse_args()
 
-    # Initialize the orchestrator with provided paths
-    orchestrator = PublicationDecisionOrchestrator(
-        synthesized_review_path=args.review,
-        manuscript_path=args.manuscript,
-        literature_context_path=args.literature,
-        technical_analysis_path=args.technical,
+    # Load required data
+    logger.info(f"Loading synthesized review from: {args.review}")
+    synthesized_review = _load_json(args.review)
+    if not synthesized_review:
+        logger.error("Failed to load synthesized review. Exiting.")
+        return
+
+    logger.info(f"Loading manuscript from: {args.manuscript}")
+    manuscript = _load_text(args.manuscript)
+    if not manuscript:
+        logger.error("Failed to load manuscript. Exiting.")
+        return
+
+    # Load optional data
+    literature_context = None
+    if args.literature:
+        logger.info(f"Loading literature context from: {args.literature}")
+        literature_context = _load_text(args.literature)
+
+    technical_analysis = None
+    if args.technical:
+        logger.info(f"Loading technical analysis from: {args.technical}")
+        technical_analysis = _load_text(args.technical)
+
+    # Create context
+    context = PublicationDecisionContext(
+        synthesized_review=synthesized_review,
+        manuscript=manuscript,
+        literature_context=literature_context,
+        technical_analysis=technical_analysis,
+        manuscript_filename=args.manuscript,  # Pass filename for saving
     )
 
-    # Generate the decision
-    decision = await orchestrator.make_decision()
+    # Create the agent
+    publication_decision_agent = create_publication_decision_agent(model=args.model)
 
-    if decision:
+    # Run the agent
+    logger.info(f"Running publication decision agent using model: {args.model}...")
+    result = await Runner.run(
+        publication_decision_agent, context=context
+    )  # Pass context object
+
+    # Process the result
+    if result and result.final_output:
+        decision: PublicationDecision = result.final_output
+
         # Save the decision
-        orchestrator.save_decision(decision, args.output)
+        save_decision(decision, context.manuscript_filename, args.output)
 
         # Print summary to console
-        logger.info("\n=== PUBLICATION DECISION ===")
-        logger.info(f"DECISION: {decision.decision.upper()}")
-        logger.info(f"\nRATIONALE:\n{decision.rationale}")
-        logger.info(f"\nKEY STRENGTHS:\n{decision.key_strengths}")
-        logger.info(f"\nKEY WEAKNESSES:\n{decision.key_weaknesses}")
+        logger.info("=== PUBLICATION DECISION ===")
+        logger.info(
+            f"DECISION: {decision.decision.value.upper()}"
+        )  # Use .value for Enum
+        logger.info(f"RATIONALE: {decision.rationale}")
+        logger.info(f"KEY STRENGTHS: {decision.key_strengths}")
+        logger.info(f"KEY WEAKNESSES: {decision.key_weaknesses}")
 
         # Print revision requirements if applicable
         if decision.decision in [
@@ -316,19 +303,25 @@ async def main():
             DecisionType.REJECT_AND_RESUBMIT,
         ]:
             logger.info(
-                f"\nREQUIRED REVISIONS:\n{decision.specific_revisions or 'None specified'}"
+                f"SPECIFIC REVISIONS: {decision.specific_revisions or 'None specified'}"
             )
 
             if decision.priority_issues:
                 priority_issues = "\n".join(
-                    f"{i + 1}. {issue}"
-                    for i, issue in enumerate(decision.priority_issues)
+                    f"- {issue}" for issue in decision.priority_issues
                 )
-                logger.info(f"\nPRIORITY ISSUES:\n{priority_issues}")
+                logger.info(f"PRIORITY ISSUES: {priority_issues}")
+            else:
+                logger.info("PRIORITY ISSUES: None specified")
 
         # Print ethical considerations if present
         if decision.ethical_considerations:
-            logger.info(f"\nETHICAL CONSIDERATIONS:\n{decision.ethical_considerations}")
+            logger.info(f"ETHICAL CONSIDERATIONS: {decision.ethical_considerations}")
+        else:
+            logger.info("ETHICAL CONSIDERATIONS: None raised")
+
+    else:
+        logger.error("Agent execution failed or produced no output.")
 
 
 if __name__ == "__main__":

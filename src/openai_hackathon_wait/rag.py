@@ -5,7 +5,7 @@ from openai import AsyncOpenAI
 
 
 class RAG:
-    def __init__(self, vector_store_name: str, model: str = "gpt-4o-mini"):
+    def __init__(self, vector_store_name: str = "global_paper_vector_store", model: str = "gpt-4o-mini"):
         self.client = AsyncOpenAI()
         self.vector_store_name = vector_store_name
         self.model = model
@@ -40,6 +40,7 @@ class RAG:
     async def delete_vector_store(self):
         await self.client.vector_stores.delete(self.vector_store.id)
 
+    
     async def ask_question(self, query: str):
         response = await self.client.responses.create(
             model=self.model,
@@ -55,3 +56,6 @@ class RAG:
         model_output = response.output
 
         return [obj.text for obj in model_output[1].content]
+
+
+rag = RAG(model="gpt-4o-mini")
